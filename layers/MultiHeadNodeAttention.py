@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from NodeAttention import NodeAttentionHead
 
 
 class MultiHeadNodeAttention(nn.Module):
@@ -26,7 +27,7 @@ class MultiHeadNodeAttention(nn.Module):
 
         self.attention_heads = nn.ModuleList(
             [
-                attention_head(
+                NodeAttentionHead(
                     node_in_fts,
                     node_out_fts,
                     edge_in_fts,
