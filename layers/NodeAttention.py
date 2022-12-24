@@ -11,9 +11,20 @@ class NodeAttentionHead(nn.Module):
         node_out_fts,
         edge_in_fts,
         edge_out_fts,
-        kernel_init,
-        kernel_reg,
+        alpha=0.2,
+        kernel_init=nn.init.xavier_uniform_,
+        kernel_reg=None,
     ):
+        """
+        Args:
+            node_in_fts: Dimensionality of node input features
+            node_out_fts: Dimensionality of node output features
+            edge_in_fts: Dimensionality of edge input features
+            edge_out_fts: Dimensionality of edge output features
+            alpha: Negative slope of the LeakyReLU activation
+            kernel_init: Kernel Initializer function, default is xavier_uniform_
+            kernel_reg: Kernel Regularizer function, default is None
+        """
         super().__init__()
         self.node_in_fts = node_in_fts
         self.node_out_fts = node_out_fts
@@ -30,10 +41,10 @@ class NodeAttentionHead(nn.Module):
 
         self.a_node = nn.Parameter(torch.Tensor(2 * node_out_fts, 1))
         self.a_edge = nn.Parameter(torch.Tensor(node_out_fts + edge_out_fts, 1))
-        self.kernel_init(self.a_node)
-        self.kernel_init(self.a_edge)
+        self.kernel_init(self.a_node, gain=1.414)
+        self.kernel_init(self.a_edge, gain=1.414)
 
-        self.leakyrelu = nn.LeakyReLU(0.2)
+        self.leakyrelu = nn.LeakyReLU(alpha)
 
     def reset_parameters(self):
         self.kernel_init(self.W_node)
@@ -42,6 +53,10 @@ class NodeAttentionHead(nn.Module):
         self.kernel_init(self.a_edge)
 
     def forward(self, inputs):
+        """
+        Args:
+            inputs: List of inputs [node_fts, edge_fts, edges]
+        """
         node_fts, edge_fts, edges = inputs
 
         h_v = torch.mm(node_fts, self.W_node)
