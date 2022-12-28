@@ -9,12 +9,12 @@ from utils.helpers import *
 
 
 def load_all_data(data_dir):
-    # loop through subdirectories in data_dir
     samples = []
 
     dirs = os.listdir(data_dir)
     for subdir in dirs:
         gs = []
+
         for filename in sorted(
             os.listdir(os.path.join(data_dir, subdir)),
             key=lambda x: int(x.split("_")[0]),
@@ -24,16 +24,21 @@ def load_all_data(data_dir):
 
             g = nx.read_edgelist(filename_dir, nodetype=int, data=(("weight", float),))
 
+            for node in g.nodes():
+                g.add_edge(node, node, weight=0.0)
+
             node_fts = extract_node_features(g)
             edge_fts = extract_edge_features(g)
             graph_fts = extract_graph_features(g)
-
+            adj = torch.tensor(nx.to_numpy_matrix(g), dtype=torch.float)
             edges = torch.tensor([[e[0], e[1]] for e in g.edges()]).t().contiguous()
+
             g_tensor = [
                 edges,
                 node_fts,
                 edge_fts,
                 graph_fts,
+                adj,
             ]
             gs.append(g_tensor)
         samples.append(gs)
