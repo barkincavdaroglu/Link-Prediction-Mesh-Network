@@ -1,63 +1,42 @@
 #!/usr/bin/env python3
 
 import torch
-import numpy as np
-import os
-import networkx as nx
+import pickle
 
 from utils.helpers import *
 
 
-def load_all_data(data_dir):
-    samples = []
-
-    dirs = os.listdir(data_dir)
-    for subdir in dirs:
-        gs = []
-
-        for filename in sorted(
-            os.listdir(os.path.join(data_dir, subdir)),
-            key=lambda x: int(x.split("_")[0]),
-        ):
-            # read .txt file and loop each line starting from third line
-            filename_dir = os.path.join(data_dir, subdir, filename)
-
-            g = nx.read_edgelist(filename_dir, nodetype=int, data=(("weight", float),))
-
-            for node in g.nodes():
-                g.add_edge(node, node, weight=0.0)
-
-            node_fts = extract_node_features(g)
-            edge_fts = extract_edge_features(g)
-            graph_fts = extract_graph_features(g)
-            adj = torch.tensor(nx.to_numpy_matrix(g), dtype=torch.float)
-            edges = torch.tensor([[e[0], e[1]] for e in g.edges()]).t().contiguous()
-
-            g_tensor = [
-                edges,
-                node_fts,
-                edge_fts,
-                graph_fts,
-                adj,
-            ]
-            gs.append(g_tensor)
-        samples.append(gs)
-    return samples
-
-
 class GraphDataset(torch.utils.data.Dataset):
-    def __init__(self, data_dir="dataset", transform=None, target_transform=None):
+    def __init__(
+        self,
+        data_dir="data_processed",
+        mode="pickle",
+        transform=None,
+        target_transform=None,
+    ):
         self.dir = data_dir
-        self.data = load_all_data(data_dir)
+        self.mode = mode
+        if mode == "pickle":
+            self.data = data_dir  # load_all_data(data_dir)
+        else:
+            self.data = load_all_data(data_dir)
         self.transform = transform
         self.target_transform = target_transform
 
     def __len__(self):
         return len(self.data)
 
+    def get_pickle(self, name):
+        with open(name, "rb") as pickle_file:
+            return pickle.load(pickle_file)
+
     def __getitem__(self, idx):
-        sample = self.data[idx][:-1]
-        label = self.data[idx][-1]
+        if self.mode == "pickle":
+            timeline = self.get_pickle(self.data + "/" + str(idx + 1) + ".pickle")
+        else:
+            timeline = self.data[idx]
+        sample = timeline[:-1]
+        label = timeline[-1]
         if self.transform:
             sample = self.transform(sample)
         if self.target_transform:
