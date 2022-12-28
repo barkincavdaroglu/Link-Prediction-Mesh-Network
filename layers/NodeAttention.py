@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from helpers import unsorted_segment_sum
+from utils.helpers import *
 
 
 class NodeAttentionHead(nn.Module):
@@ -40,7 +40,7 @@ class NodeAttentionHead(nn.Module):
         self.kernel_init(self.W_edge)
 
         self.a_node = nn.Parameter(torch.Tensor(2 * node_out_fts, 1))
-        self.a_edge = nn.Parameter(torch.Tensor(node_out_fts + edge_out_fts, 1))
+        self.a_edge = nn.Parameter(torch.Tensor(2 * node_out_fts, 1))
         self.kernel_init(self.a_node, gain=1.414)
         self.kernel_init(self.a_edge, gain=1.414)
 
@@ -59,19 +59,28 @@ class NodeAttentionHead(nn.Module):
         """
         node_fts, edge_fts, edges = inputs
 
+        node_fts = torch.squeeze(node_fts)
+        node_ft_dim = 64
+        edge_fts = torch.squeeze(edge_fts)
+        edge_fts_padded = F.pad(edge_fts, pad=(0, node_ft_dim - edge_fts.shape[1]))
+        edges = torch.squeeze(edges)
+
+        edges = edges.reshape(edges.shape[1], 2)
+
         h_v = torch.mm(node_fts, self.W_node)
         e_v = torch.mm(edge_fts, self.W_edge)
 
-        h_v_expanded = h_v[
+        h_v_pairs = h_v[
             edges[
                 :,
             ]
-        ].reshape(-1, 2 * self.node_out_fts)
-        e_v_expanded = e_v[
-            edges[
-                :,
-            ]
-        ].reshape(-1, self.node_out_fts + self.edge_out_fts)
+        ]
+
+        h_v_expanded = torch.reshape(h_v_pairs, (-1, 2 * self.node_out_fts))
+
+        e_v_expanded = torch.clone(h_v_pairs)
+        e_v_expanded[:, 1] = edge_fts_padded
+        e_v_expanded = e_v_expanded.reshape(-1, 2 * self.node_out_fts)
 
         node_attention = self.leakyrelu(torch.matmul(h_v_expanded, self.a_node))
         node_attention = torch.squeeze(node_attention, -1)
@@ -84,7 +93,9 @@ class NodeAttentionHead(nn.Module):
         node_attention_sum = unsorted_segment_sum(
             node_attention, edges[:, 0], torch.unique(edges[:, 0]).shape[0]
         )
-        node_attention_sum = node_attention_sum.repeat(torch.bincount(edges[:, 0]))
+        node_attention_sum = node_attention_sum.repeat_interleave(
+            torch.bincount(edges[:, 0])
+        )
         node_attention_norm = node_attention / node_attention_sum
 
         node_attention_var = torch.var(node_attention_norm)
@@ -93,28 +104,22 @@ class NodeAttentionHead(nn.Module):
         edge_attention_sum = unsorted_segment_sum(
             edge_attention, edges[:, 0], torch.unique(edges[:, 0]).shape[0]
         )
-        edge_attention_sum = edge_attention_sum.repeat(torch.bincount(edges[:, 0]))
+        edge_attention_sum = edge_attention_sum.repeat_interleave(
+            torch.bincount(edges[:, 0])
+        )
         edge_attention_norm = edge_attention / edge_attention_sum
 
         edge_attention_var = torch.var(edge_attention_norm)
 
         # aggregate
-        node_ft_neighbors = h_v[
-            edges[
-                :,
-            ]
-        ].reshape(-1, 2 * self.node_out_fts)
+        node_ft_neighbors = h_v[edges[:, 1]]
         node_out = unsorted_segment_sum(
             node_ft_neighbors * node_attention_norm.unsqueeze(1),
             edges[:, 0],
             torch.unique(edges[:, 0]).shape[0],
         )
 
-        edge_ft_neighbors = e_v[
-            edges[
-                :,
-            ]
-        ].reshape(-1, self.node_out_fts + self.edge_out_fts)
+        edge_ft_neighbors = e_v[edges[:, 1]]
         edge_out = unsorted_segment_sum(
             edge_ft_neighbors * edge_attention_norm.unsqueeze(1),
             edges[:, 0],
