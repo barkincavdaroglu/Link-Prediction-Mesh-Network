@@ -11,6 +11,7 @@ class MultiHeadNodeAttention(nn.Module):
         edge_in_fts,
         edge_out_fts,
         num_heads,
+        head_agg_mode="concat",
         alpha=0.2,
         kernel_init=nn.init.xavier_uniform_,
         kernel_reg=None,
@@ -21,9 +22,15 @@ class MultiHeadNodeAttention(nn.Module):
         self.edge_in_fts = edge_in_fts
         self.edge_out_fts = edge_out_fts
         self.num_heads = num_heads
+        self.head_agg_mode = head_agg_mode
 
         self.kernel_init = kernel_init
         self.kernel_reg = kernel_reg
+
+        self.layer_norm = nn.LayerNorm(
+            num_heads * node_out_fts + num_heads * edge_out_fts
+        )
+        self.activation = nn.LeakyReLU(alpha)
 
         self.attention_heads = nn.ModuleList(
             [
@@ -45,7 +52,7 @@ class MultiHeadNodeAttention(nn.Module):
         Args:
             inputs: list of [node_fts, edge_fts, edges]
         Returns:
-            node_ft_embeds: tensor of shape (num_nodes, num_heads * node_out_fts)
+            node_ft_embeds: tensor of shape (num_nodes, num_heads * node_out_fts + num_heads * edge_out_fts)
         """
         node_fts, edge_fts, edges = inputs
 
@@ -80,14 +87,35 @@ class MultiHeadNodeAttention(nn.Module):
         edge_attentions_var = torch.exp(torch.clamp(edge_attentions_var, -2, 2))
         edge_attentions_var = edge_attentions_var / torch.sum(edge_attentions_var)
 
-        # multiply each node_ft_embed with respective node_attentions_var and concat results
-        node_ft_embeds = torch.cat(
-            [node_ft_embeds[i] * node_attentions_var[i] for i in range(self.num_heads)],
-            dim=1,
-        )
-        edge_ft_embeds = torch.cat(
-            [edge_ft_embeds[i] * edge_attentions_var[i] for i in range(self.num_heads)],
-            dim=1,
-        )
+        if self.head_agg_mode == "concat":
+            # multiply each node_ft_embed with respective node_attentions_var and concat results
+            node_ft_embeds = torch.cat(
+                [
+                    node_ft_embeds[i] * node_attentions_var[i]
+                    for i in range(self.num_heads)
+                ],
+                dim=1,
+            )
+            edge_ft_embeds = torch.cat(
+                [
+                    edge_ft_embeds[i] * edge_attentions_var[i]
+                    for i in range(self.num_heads)
+                ],
+                dim=1,
+            )
+        else:
+            # compute weighted mean of node_ft_embeds and edge_ft_embeds
+            node_ft_embeds = (
+                torch.mul(
+                    node_attentions_var.unsqueeze(1).unsqueeze(1), node_ft_embeds
+                ).sum(dim=0)
+                / node_attention_var.sum()
+            )
+            edge_ft_embeds = (
+                torch.mul(
+                    edge_attentions_var.unsqueeze(1).unsqueeze(1), edge_ft_embeds
+                ).sum(dim=0)
+                / edge_attention_var.sum()
+            )
 
         return torch.cat([node_ft_embeds, edge_ft_embeds], dim=1)
