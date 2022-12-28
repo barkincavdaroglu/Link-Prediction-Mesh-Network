@@ -107,7 +107,7 @@ def read_graph():
 
                     gs.append(G)
 
-        if invalids == 0:
+        if invalids == 0 and len(gs) == 11:
             valid_timeline_counter += 1
             os.mkdir(os.path.join("dataset", str(valid_timeline_counter)))
 
