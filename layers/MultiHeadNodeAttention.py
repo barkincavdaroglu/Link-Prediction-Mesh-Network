@@ -11,7 +11,7 @@ class MultiHeadNodeAttention(nn.Module):
         edge_in_fts,
         edge_out_fts,
         num_heads,
-        head_agg_mode="concat",
+        head_agg_mode,
         alpha=0.2,
         kernel_init=nn.init.xavier_uniform_,
         kernel_reg=None,
@@ -26,11 +26,6 @@ class MultiHeadNodeAttention(nn.Module):
 
         self.kernel_init = kernel_init
         self.kernel_reg = kernel_reg
-
-        self.layer_norm = nn.LayerNorm(
-            num_heads * node_out_fts + num_heads * edge_out_fts
-        )
-        self.activation = nn.LeakyReLU(alpha)
 
         self.attention_heads = nn.ModuleList(
             [
