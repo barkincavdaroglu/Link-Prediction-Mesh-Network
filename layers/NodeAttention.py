@@ -40,7 +40,7 @@ class NodeAttentionHead(nn.Module):
         self.kernel_init(self.W_edge)
 
         self.a_node = nn.Parameter(torch.Tensor(2 * node_out_fts, 1))
-        self.a_edge = nn.Parameter(torch.Tensor(2 * node_out_fts, 1))
+        self.a_edge = nn.Parameter(torch.Tensor(node_out_fts + edge_out_fts, 1))
         self.kernel_init(self.a_node, gain=1.414)
         self.kernel_init(self.a_edge, gain=1.414)
 
@@ -60,12 +60,12 @@ class NodeAttentionHead(nn.Module):
         node_fts, edge_fts, edges = inputs
 
         node_fts = torch.squeeze(node_fts)
-        node_ft_dim = 64
         edge_fts = torch.squeeze(edge_fts)
-        edge_fts_padded = F.pad(edge_fts, pad=(0, node_ft_dim - edge_fts.shape[1]))
-        edges = torch.squeeze(edges)
+        edge_fts = torch.cat([edge_fts, edge_fts], dim=0)
 
+        edges = torch.squeeze(edges)
         edges = edges.reshape(edges.shape[1], 2)
+        edges = torch.cat([edges, edges.flip(1)], dim=0)
 
         h_v = torch.mm(node_fts, self.W_node)
         e_v = torch.mm(edge_fts, self.W_edge)
@@ -78,9 +78,7 @@ class NodeAttentionHead(nn.Module):
 
         h_v_expanded = torch.reshape(h_v_pairs, (-1, 2 * self.node_out_fts))
 
-        e_v_expanded = torch.clone(h_v_pairs)
-        e_v_expanded[:, 1] = edge_fts_padded
-        e_v_expanded = e_v_expanded.reshape(-1, 2 * self.node_out_fts)
+        e_v_expanded = torch.cat([h_v[edges[:, 0]], e_v], dim=1)
 
         node_attention = self.leakyrelu(torch.matmul(h_v_expanded, self.a_node))
         node_attention = torch.squeeze(node_attention, -1)
