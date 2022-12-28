@@ -1,3 +1,4 @@
+from asyncore import read
 from datetime import datetime
 import os
 import networkx as nx
@@ -23,9 +24,9 @@ def group_and_sort_by_unixtime():
 
     # sort the list by unix timestamp
     filenames_sorted.sort(key=lambda x: x[0])
-    # partition the list into groups of 8
+    # partition the list into groups of 9
     filenames_sorted = [
-        filenames_sorted[i : i + 11] for i in range(0, len(filenames_sorted), 11)
+        filenames_sorted[i : i + 9] for i in range(0, len(filenames_sorted), 9)
     ]
 
     return filenames_sorted
@@ -107,7 +108,7 @@ def read_graph():
 
                     gs.append(G)
 
-        if invalids == 0 and len(gs) == 11:
+        if invalids == 0 and len(gs) == 9:
             valid_timeline_counter += 1
             os.mkdir(os.path.join("dataset", str(valid_timeline_counter)))
 
@@ -152,3 +153,6 @@ def inverse_1(x):
 
 def inverse_soft(x):
     return 1 - (1 / (1 + np.exp(x)))
+
+
+read_graph()

@@ -2,8 +2,12 @@ import torch
 import networkx as nx
 import numpy as np
 
+import os
+import pickle
 
-def unsorted_segment_sum(data, segment_ids, num_segments):
+
+# @torch.jit.script
+def unsorted_segment_sum(data, segment_ids: torch.Tensor, num_segments: int):
     """
     Computes the sum along segments of a tensor. Analogous to tf.unsorted_segment_sum.
 
@@ -17,6 +21,7 @@ def unsorted_segment_sum(data, segment_ids, num_segments):
     ), "segment_ids.shape should be a prefix of data.shape"
 
     # segment_ids is a 1-D tensor repeat it to have the same shape as data
+    # TODO convert *data.shape[1:] to torch jit compatible code
     if len(segment_ids.shape) == 1:
         s = torch.prod(torch.tensor(data.shape[1:])).long()
         segment_ids = segment_ids.repeat_interleave(s).view(
@@ -142,3 +147,53 @@ def extract_graph_features(G) -> torch.Tensor:
             num_bridges,
         ]
     )
+
+
+def check_symmetric(a, rtol=1e-05, atol=1e-08):
+    return np.allclose(a, a.T, rtol=rtol, atol=atol)
+
+
+def load_all_data(data_dir="dataset", mode="pickle"):
+    samples = []
+
+    dirs = os.listdir(data_dir)
+    for subdir in dirs:
+        gs = []
+
+        for filename in sorted(
+            os.listdir(os.path.join(data_dir, subdir)),
+            key=lambda x: int(x.split("_")[0]),
+        ):
+            # read .txt file and loop each line starting from third line
+            filename_dir = os.path.join(data_dir, subdir, filename)
+
+            g = nx.read_edgelist(filename_dir, nodetype=int, data=(("weight", float),))
+
+            for node in g.nodes():
+                g.add_edge(node, node, weight=0.0)
+
+            node_fts = extract_node_features(g)
+            edge_fts = extract_edge_features(g)
+            graph_fts = extract_graph_features(g)
+            adj_numpy = nx.to_numpy_matrix(g)
+
+            assert check_symmetric(adj_numpy)
+
+            adj = torch.tensor(adj_numpy, dtype=torch.float)
+
+            edges = torch.tensor([[e[0], e[1]] for e in g.edges()]).t().contiguous()
+
+            g_tensor = [
+                edges,
+                node_fts,
+                edge_fts,
+                graph_fts,
+                adj,
+            ]
+
+            gs.append(g_tensor)
+            # For faster loading, uncomment the block below to save the processed data as pickle files
+            # with open("data_processed/" + subdir + ".pickle", "wb") as ft_tensors:
+            #    pickle.dump(gs, ft_tensors)
+        samples.append(gs)
+    return samples
