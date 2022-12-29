@@ -40,7 +40,7 @@ class GraphDataModule(pl.LightningDataModule):
 
         test_sampler = SubsetRandomSampler(test_indices)
         test_loader = torch.utils.data.DataLoader(
-            dataset, batch_size=batch_size, sampler=test_sampler, num_workers=6
+            dataset, batch_size=batch_size, sampler=test_sampler
         )
 
         training_dataset_size = len(dataset) - len(test_indices)
@@ -52,10 +52,10 @@ class GraphDataModule(pl.LightningDataModule):
         valid_sampler = SubsetRandomSampler(val_indices)
 
         train_loader = torch.utils.data.DataLoader(
-            dataset, batch_size=1, sampler=train_sampler, num_workers=6
+            dataset, batch_size=1, sampler=train_sampler
         )
         validation_loader = torch.utils.data.DataLoader(
-            dataset, batch_size=1, sampler=valid_sampler, num_workers=6
+            dataset, batch_size=1, sampler=valid_sampler
         )
 
         self.train = train_loader
