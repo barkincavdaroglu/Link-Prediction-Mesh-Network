@@ -15,4 +15,4 @@ class GeneratorConfig:
     in_features = 0
     out_features = 0
     gru_hidden = 128
-    head_agg_mode = "mean"
+    head_agg_mode = "learnable"

@@ -26,14 +26,15 @@ class GNBlock(nn.Module):
                 num_heads_node * node_out_fts + num_heads_node * edge_out_fts
             )
         else:
-            node_in_w_head = node_out_fts + edge_out_fts
+            node_in_w_head = node_out_fts
+
         self.multihead_node_attention_hop_1 = MultiHeadNodeAttention(
             node_in_fts=node_in_fts,
             node_out_fts=node_out_fts,
             edge_in_fts=edge_out_fts,
             edge_out_fts=edge_out_fts,
             num_heads=num_heads_node,
-            head_agg_mode="mean",
+            head_agg_mode=head_agg_mode,
         )
         self.multihead_node_attention_hop_2 = MultiHeadNodeAttention(
             node_in_fts=node_in_w_head,
@@ -41,7 +42,7 @@ class GNBlock(nn.Module):
             edge_in_fts=edge_out_fts,
             edge_out_fts=edge_out_fts,
             num_heads=num_heads_node,
-            head_agg_mode="mean",
+            head_agg_mode=head_agg_mode,
         )
         self.layer_norm = torch.nn.LayerNorm(node_in_w_head)
 
@@ -70,7 +71,7 @@ class GNBlock(nn.Module):
         edge_fts = self.edge_update([node_fts, edge_fts, edges])
 
         node_fts = self.multihead_node_attention_hop_1([node_fts, edge_fts, edges])
-        # node_fts = self.multihead_node_attention_hop_2([node_fts, edge_fts, edges])
+        node_fts = self.multihead_node_attention_hop_2([node_fts, edge_fts, edges])
         # edge_fts = self.edge_update([node_fts, edge_fts, edges])
 
         agg_node_fts = self.node_agg([node_fts, adj])

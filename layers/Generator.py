@@ -15,7 +15,7 @@ class Generator(nn.Module):
                 + config.num_heads_node * config.edge_out_fts
             )
             if config.head_agg_mode == "concat"
-            else config.node_out_fts + config.edge_out_fts
+            else config.node_out_fts
         )
 
         self.node_num = config.node_num
@@ -32,6 +32,7 @@ class Generator(nn.Module):
             edge_out_fts=config.edge_out_fts,
             num_heads_node=config.num_heads_node,
             num_heads_graph=config.num_heads_graph,
+            head_agg_mode=config.head_agg_mode,
         )
 
         self.gru = nn.GRU(

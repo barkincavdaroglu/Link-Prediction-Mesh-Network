@@ -31,9 +31,16 @@ class GraphLightningModule(pl.LightningModule):
         # logs metrics for each training_step,
         # and the average across the epoch, to the progress bar and logger
         self.log(
-            "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
+            "train/loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
         )
-        return loss
+        return {"loss": loss}
+
+    def training_epoch_end(self, outputs):
+        loss = np.array([])
+        for result in outputs:
+            loss = np.append(loss, result["loss"])
+
+        self.log("train/epoch/loss", loss.mean())
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
@@ -44,7 +51,15 @@ class GraphLightningModule(pl.LightningModule):
         upper_target_adj = target_adj[np.triu_indices(19, 1)]
         # target_adj = target_adj.view(1, -1)
         loss = self.loss_module(adj_predicted, upper_target_adj)
-        self.log("val_loss", loss)
+        # self.log("val/loss", loss)
+        return {"loss": loss}
+
+    def validation_epoch_end(self, outputs):
+        loss = np.array([])
+        for result in outputs:
+            loss = np.append(loss, result["loss"])
+
+        self.log("val/loss", loss.mean())
 
     def test_step(self, batch, batch_idx):
         sequence, target_adj = batch

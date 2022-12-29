@@ -169,8 +169,8 @@ def load_all_data(data_dir="dataset", mode="pickle"):
 
             g = nx.read_edgelist(filename_dir, nodetype=int, data=(("weight", float),))
 
-            for node in g.nodes():
-                g.add_edge(node, node, weight=0.0)
+            # for node in g.nodes():
+            #    g.add_edge(node, node, weight=0.0)
 
             node_fts = extract_node_features(g)
             edge_fts = extract_edge_features(g)
@@ -194,6 +194,6 @@ def load_all_data(data_dir="dataset", mode="pickle"):
             gs.append(g_tensor)
             # For faster loading, uncomment the block below to save the processed data as pickle files
             # with open("data_processed/" + subdir + ".pickle", "wb") as ft_tensors:
-            #    pickle.dump(gs, ft_tensors)
+            #     pickle.dump(gs, ft_tensors)
         samples.append(gs)
     return samples
