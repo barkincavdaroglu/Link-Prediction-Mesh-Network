@@ -3,7 +3,6 @@ from dataclasses import dataclass
 
 @dataclass
 class TrainerConfig:
-    #
     lr: float = 0.002
     weight_decay: float = None
     num_epochs: int = 10

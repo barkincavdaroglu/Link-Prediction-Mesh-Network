@@ -26,6 +26,8 @@ class MultiHeadNodeAttention(nn.Module):
 
         self.kernel_init = kernel_init
         self.kernel_reg = kernel_reg
+        # TODO: fix layer norm input dim
+        self.layer_norm = nn.LayerNorm(node_out_fts + edge_in_fts)
 
         self.attention_heads = nn.ModuleList(
             [

@@ -21,7 +21,7 @@ def unsorted_segment_sum(data, segment_ids: torch.Tensor, num_segments: int):
     ), "segment_ids.shape should be a prefix of data.shape"
 
     # segment_ids is a 1-D tensor repeat it to have the same shape as data
-    # TODO convert *data.shape[1:] to torch jit compatible code
+    # TODO convert *data.shape[1:] to torch.jit compatible code
     if len(segment_ids.shape) == 1:
         s = torch.prod(torch.tensor(data.shape[1:])).long()
         segment_ids = segment_ids.repeat_interleave(s).view(

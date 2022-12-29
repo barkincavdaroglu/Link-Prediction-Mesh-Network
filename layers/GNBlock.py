@@ -30,7 +30,7 @@ class GNBlock(nn.Module):
         self.multihead_node_attention_hop_1 = MultiHeadNodeAttention(
             node_in_fts=node_in_fts,
             node_out_fts=node_out_fts,
-            edge_in_fts=edge_in_fts,
+            edge_in_fts=edge_out_fts,
             edge_out_fts=edge_out_fts,
             num_heads=num_heads_node,
             head_agg_mode="mean",
@@ -38,7 +38,7 @@ class GNBlock(nn.Module):
         self.multihead_node_attention_hop_2 = MultiHeadNodeAttention(
             node_in_fts=node_in_w_head,
             node_out_fts=node_out_fts,
-            edge_in_fts=edge_in_fts,
+            edge_in_fts=edge_out_fts,
             edge_out_fts=edge_out_fts,
             num_heads=num_heads_node,
             head_agg_mode="mean",
@@ -55,7 +55,7 @@ class GNBlock(nn.Module):
             num_heads=num_heads_graph,
         )"""
         self.edge_update = EdgeUpdate(
-            in_fts=node_in_w_head,
+            in_fts=node_in_fts,
             edge_in_fts=edge_in_fts,
             out_dim=edge_out_fts,
         )
@@ -67,10 +67,11 @@ class GNBlock(nn.Module):
     def forward(self, input):
         node_fts, edge_fts, edges, adj = input
 
-        node_fts = self.multihead_node_attention_hop_1([node_fts, edge_fts, edges])
-
-        node_fts = self.multihead_node_attention_hop_2([node_fts, edge_fts, edges])
         edge_fts = self.edge_update([node_fts, edge_fts, edges])
+
+        node_fts = self.multihead_node_attention_hop_1([node_fts, edge_fts, edges])
+        # node_fts = self.multihead_node_attention_hop_2([node_fts, edge_fts, edges])
+        # edge_fts = self.edge_update([node_fts, edge_fts, edges])
 
         agg_node_fts = self.node_agg([node_fts, adj])
         agg_edge_fts = torch.mean(edge_fts, dim=0)

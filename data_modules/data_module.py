@@ -1,7 +1,10 @@
 from typing import Optional
 import pytorch_lightning as pl
-from dataset import GraphDataset
+from .dataset import GraphDataset
 from torch.utils.data import random_split, DataLoader
+import numpy as np
+from torch.utils.data.sampler import SubsetRandomSampler
+import torch
 
 
 class GraphDataModule(pl.LightningDataModule):
@@ -12,52 +15,58 @@ class GraphDataModule(pl.LightningDataModule):
     def __init__(
         self,
     ):
-        super(GraphDataModule).__init__()
-
-    def prepare_data(self):
-        """
-        Empty prepare_data method left in intentionally.
-        https://pytorch-lightning.readthedocs.io/en/latest/data/datamodule.html#prepare-data
-        """
-        pass
+        super().__init__()
 
     def setup(self, stage: Optional[str] = None):
         """
         Method to setup your datasets, here you can use whatever dataset class you have defined in Pytorch and prepare the data in order to pass it to the loaders later
         https://pytorch-lightning.readthedocs.io/en/latest/data/datamodule.html#setup
         """
-
-        # Assign train/val datasets for use in dataloaders
-        # the stage is used in the Pytorch Lightning trainer method, which you can call as fit (training, evaluation) or test, also you can use it for predict, not implemented here
-
         dataset = GraphDataset()
-        train_set_size = int(len(dataset) * 0.7)
-        valid_set_size = int(len(dataset) * 0.1)
-        test_set_size = len(dataset) - train_set_size - valid_set_size
+        batch_size = 1
+        validation_split = 0.2
+        test_split = 0.1
+        shuffle_dataset = True
+        random_seed = 42
 
-        self.train, self.validate, self.test = random_split(
-            dataset, [train_set_size, valid_set_size, test_set_size]
+        # Creating data indices for training and validation splits:
+        dataset_size = len(dataset)
+        indices = list(range(dataset_size))
+        split = int(np.floor(test_split * dataset_size))
+        if shuffle_dataset:
+            np.random.seed(random_seed)
+            np.random.shuffle(indices)
+        test_indices = indices[:split]
+
+        test_sampler = SubsetRandomSampler(test_indices)
+        test_loader = torch.utils.data.DataLoader(
+            dataset, batch_size=batch_size, sampler=test_sampler, num_workers=6
         )
-        """if stage == "fit" or stage is None:
-            train_set_full =  GraphDataset()
-            train_set_size = int(len(train_set_full) * 0.9)
-            valid_set_size = len(train_set_full) - train_set_size
-            self.train, self.validate = random_split(train_set_full, [train_set_size, valid_set_size])
 
-        # Assign test dataset for use in dataloader(s)
-        if stage == "test" or stage is None:
-            self.test = YourCustomDataset(
-                root_path="/Users/yourusername/path/to/data/test_set/",
-                ipt="input/",
-                tgt="target/",
-                tgt_scale=25, 
-                train_transform=False)"""
+        training_dataset_size = len(dataset) - len(test_indices)
+        indices = list(range(dataset_size))
+        split = int(np.floor(validation_split * training_dataset_size))
+        train_indices, val_indices = indices[split:], indices[:split]
+
+        train_sampler = SubsetRandomSampler(train_indices)
+        valid_sampler = SubsetRandomSampler(val_indices)
+
+        train_loader = torch.utils.data.DataLoader(
+            dataset, batch_size=1, sampler=train_sampler, num_workers=6
+        )
+        validation_loader = torch.utils.data.DataLoader(
+            dataset, batch_size=1, sampler=valid_sampler, num_workers=6
+        )
+
+        self.train = train_loader
+        self.validate = validation_loader
+        self.test = test_loader
 
     def train_dataloader(self):
-        return DataLoader(self.train, batch_size=1, num_workers=4)
+        return self.train
 
     def val_dataloader(self):
-        return DataLoader(self.validate, batch_size=1, num_workers=4)
+        return self.validate
 
     def test_dataloader(self):
-        return DataLoader(self.test, batch_size=1, num_workers=4)
+        return self.test

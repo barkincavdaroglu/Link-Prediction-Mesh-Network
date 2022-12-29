@@ -1,3 +1,4 @@
+from typing import List
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -46,13 +47,17 @@ class NodeAttentionHead(nn.Module):
 
         self.leakyrelu = nn.LeakyReLU(alpha)
 
+        self.node_agg = nn.Linear(node_out_fts, node_out_fts)
+        self.edge_agg = nn.Linear(edge_out_fts, edge_out_fts)
+        self.node_edge_agg = nn.Linear(node_out_fts + edge_out_fts, node_out_fts)
+
     def reset_parameters(self):
         self.kernel_init(self.W_node)
         self.kernel_init(self.W_edge)
         self.kernel_init(self.a_node)
         self.kernel_init(self.a_edge)
 
-    def forward(self, inputs):
+    def forward(self, inputs: List[torch.Tensor]):
         """
         Args:
             inputs: List of inputs [node_fts, edge_fts, edges]

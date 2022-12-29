@@ -2,54 +2,41 @@ import torch
 import torch.nn as nn
 from layers.GraphGRU import GraphGRU
 from layers.GNBlock import GNBlock
+from configs.GeneratorConfig import GeneratorConfig
 
 
 class Generator(nn.Module):
-    def __init__(
-        self,
-        graph_in_fts,
-        graph_out_fts,
-        node_in_fts,
-        node_out_fts,
-        edge_in_fts,
-        edge_out_fts,
-        num_heads_node,
-        num_heads_graph,
-        node_num,
-        in_features=0,
-        out_features=0,
-        gru_hidden=128,
-        head_agg_mode="mean",
-    ):
+    def __init__(self, config: GeneratorConfig):
         """ """
         super(Generator, self).__init__()
-        node_in_w_head = 0
-        if head_agg_mode == "concat":
-            node_in_w_head = (
-                num_heads_node * node_out_fts + num_heads_node * edge_out_fts
+        node_in_w_head = (
+            (
+                config.num_heads_node * config.node_out_fts
+                + config.num_heads_node * config.edge_out_fts
             )
-        else:
-            node_in_w_head = node_out_fts + edge_out_fts
+            if config.head_agg_mode == "concat"
+            else config.node_out_fts + config.edge_out_fts
+        )
 
-        self.node_num = node_num
+        self.node_num = config.node_num
 
-        self.in_features = in_features
+        self.in_features = config.in_features
         self.out_features = node_in_w_head
 
         self.gn = GNBlock(
-            graph_in_fts=graph_in_fts,
-            graph_out_fts=graph_out_fts,
-            node_in_fts=node_in_fts,
-            node_out_fts=node_out_fts,
-            edge_in_fts=edge_in_fts,
-            edge_out_fts=edge_out_fts,
-            num_heads_node=num_heads_node,
-            num_heads_graph=num_heads_graph,
+            graph_in_fts=config.graph_in_fts,
+            graph_out_fts=config.graph_out_fts,
+            node_in_fts=config.node_in_fts,
+            node_out_fts=config.node_out_fts,
+            edge_in_fts=config.edge_in_fts,
+            edge_out_fts=config.edge_out_fts,
+            num_heads_node=config.num_heads_node,
+            num_heads_graph=config.num_heads_graph,
         )
 
         self.gru = nn.GRU(
-            node_num * node_in_w_head,
-            gru_hidden,
+            config.node_num * node_in_w_head,
+            config.gru_hidden,
         )
 
         """self.graph_gru = GraphGRU(
@@ -62,7 +49,11 @@ class Generator(nn.Module):
         )"""
 
         self.ffn = nn.Sequential(
-            nn.Linear(gru_hidden, node_num * node_num), nn.Sigmoid()
+            nn.Linear(
+                config.gru_hidden,
+                int((config.node_num * config.node_num - config.node_num) / 2),
+            ),
+            nn.Sigmoid(),
         )
 
     def forward(self, inputs):
