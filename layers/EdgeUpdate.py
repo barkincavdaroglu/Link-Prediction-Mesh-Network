@@ -4,17 +4,17 @@ import torch.nn.functional as F
 
 
 class EdgeUpdate(torch.nn.Module):
-    def __init__(self, in_fts: int, edge_in_fts: int, out_dim: int) -> None:
+    def __init__(self, node_in_fts: int, edge_in_fts: int, edge_out_fts: int) -> None:
         super().__init__()
-        self.dim = out_dim
+        self.dim = edge_out_fts
         self.initial_update = torch.nn.Linear(
-            in_features=edge_in_fts, out_features=out_dim
+            in_features=edge_in_fts, out_features=edge_out_fts
         )
         self.mlp = torch.nn.Linear(
-            in_features=2 * in_fts + out_dim, out_features=out_dim
+            in_features=2 * node_in_fts + edge_out_fts, out_features=edge_out_fts
         )
         self.alpha_mlp = torch.nn.Linear(
-            in_features=2 * in_fts + out_dim, out_features=1
+            in_features=2 * node_in_fts + edge_out_fts, out_features=1
         )
 
     def forward(

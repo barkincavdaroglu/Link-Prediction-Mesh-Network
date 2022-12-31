@@ -19,7 +19,8 @@ class GraphDataModule(pl.LightningDataModule):
 
     def setup(self, stage: Optional[str] = None):
         """
-        Method to setup your datasets, here you can use whatever dataset class you have defined in Pytorch and prepare the data in order to pass it to the loaders later
+        Method to setup your datasets, here we use the dataset class and prepare the data
+        in order to pass it to the loaders later
         https://pytorch-lightning.readthedocs.io/en/latest/data/datamodule.html#setup
         """
         dataset = GraphDataset()

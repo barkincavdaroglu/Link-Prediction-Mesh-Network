@@ -1,6 +1,5 @@
 from torch import nn
 from layers.Generator import Generator
-import neptune.new as neptune
 from configs.GeneratorConfig import GeneratorConfig
 from configs.TrainerConfig import TrainerConfig
 from pytorch_lightning import Trainer
@@ -9,8 +8,8 @@ from data_modules.data_module import GraphDataModule
 from pytorch_lightning.loggers import NeptuneLogger
 from dotenv import load_dotenv
 import os
+import torch
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
-
 
 load_dotenv()
 
@@ -38,7 +37,7 @@ lr_logger = LearningRateMonitor(logging_interval="epoch")
 
 # create model checkpointing object
 model_checkpoint = ModelCheckpoint(
-    dirpath="my_model/checkpoints/",
+    dirpath="model_ckpts/checkpoints/",
     filename="{epoch:02d}",
     save_weights_only=True,
     save_top_k=2,
@@ -47,15 +46,14 @@ model_checkpoint = ModelCheckpoint(
     every_n_epochs=1,
 )
 
-# (neptune) initialize a trainer and pass neptune_logger
 trainer = Trainer(
     logger=neptune_logger,
     callbacks=[lr_logger, model_checkpoint],
     max_epochs=trainer_config.num_epochs,
     track_grad_norm=2,  # track gradient norm
+    gradient_clip_val=3,
 )
 
-# (neptune) log hyper-parameters
 # neptune_logger.log_hyperparams(params=trainer_config)
 neptune_logger.log_model_summary(model=pl_model, max_depth=-1)
 

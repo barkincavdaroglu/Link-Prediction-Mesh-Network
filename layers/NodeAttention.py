@@ -1,3 +1,4 @@
+from cmath import isnan
 from typing import List
 import torch
 import torch.nn as nn
@@ -12,7 +13,7 @@ class NodeAttentionHead(nn.Module):
         node_in_fts,
         node_out_fts,
         edge_in_fts,
-        edge_out_fts,
+        node_agg_mode,
         alpha=0.2,
         kernel_init=nn.init.xavier_uniform_,
         kernel_reg=None,
@@ -33,28 +34,22 @@ class NodeAttentionHead(nn.Module):
         self.node_in_fts = node_in_fts
         self.node_out_fts = node_out_fts
         self.edge_in_fts = edge_in_fts
-        self.edge_out_fts = edge_out_fts
+        self.node_agg_mode = node_agg_mode
 
         self.message_norm = MessageNorm(learn_scale=True)
 
         self.kernel_init = kernel_init
         self.kernel_reg = kernel_reg
 
-        self.W_node = nn.Parameter(torch.Tensor(node_in_fts, node_out_fts))
-        self.kernel_init(self.W_node)
-
+        self.W_node = nn.Linear(node_in_fts, node_out_fts)
         self.a_node = nn.Parameter(torch.Tensor(2 * node_out_fts + edge_in_fts, 1))
-        self.kernel_init(self.a_node, gain=1.414)
 
         self.leakyrelu = nn.LeakyReLU(alpha)
+        self._init_parameters()
 
-        self.node_update_agg = nn.Linear(node_out_fts, node_out_fts)
-
-    def reset_parameters(self):
-        self.kernel_init(self.W_node)
-        self.kernel_init(self.W_edge)
-        self.kernel_init(self.a_node)
-        self.kernel_init(self.a_edge)
+    def _init_parameters(self):
+        nn.init.xavier_uniform_(self.W_node.weight, gain=1.414)
+        nn.init.xavier_uniform_(self.a_node, gain=1.414)
 
     def forward(self, inputs: List[torch.Tensor]):
         """
@@ -72,7 +67,7 @@ class NodeAttentionHead(nn.Module):
         edges_undirected = torch.cat([edges, edges.flip(1)], dim=0)
 
         # Transform initial node features
-        h_v = torch.mm(node_fts, self.W_node)
+        h_v = self.W_node(node_fts)  # torch.mm(node_fts, self.W_node)
 
         # Each row will contain the tensor:
         # [node_fts[edge[0]], node_fts[edge[1]], edge_fts for edge]
@@ -89,7 +84,7 @@ class NodeAttentionHead(nn.Module):
         node_attention = self.leakyrelu(torch.matmul(h_v_expanded, self.a_node))
 
         # normalize attention scores using softmax
-        node_attention = torch.exp(torch.clamp(node_attention, -2, 2))
+        node_attention = torch.exp(node_attention)
 
         # For each node, sum the attention scores of all its neighbors
         node_attention_sum = unsorted_segment_sum(
@@ -98,12 +93,12 @@ class NodeAttentionHead(nn.Module):
             torch.unique(edges_undirected[:, 0]).shape[0],
         )
         # Repeat the sum for each neighbor of the node
-        node_attention_sum = node_attention_sum.repeat_interleave(
-            torch.bincount(edges_undirected[:, 0]), dim=0
-        )
-        # Normalize attention scores by dividing each by neighborhood sum
-        node_attention_norm = node_attention / node_attention_sum
+        node_attention_sum = node_attention_sum[edges_undirected[:, 0]]
 
+        # Normalize attention scores by dividing each by neighborhood sum
+        node_attention_norm = torch.log(node_attention / node_attention_sum)
+
+        # print("NORMALIZED ATT: ", node_attention_norm, "\n")
         node_attention_var = torch.var(node_attention_norm)
 
         # Get the node features of neighbors for all nodes
@@ -116,9 +111,15 @@ class NodeAttentionHead(nn.Module):
             torch.unique(edges_undirected[:, 0]).shape[0],
         )
 
-        # Normalize aggregated message
         agg_message_normalized = self.message_norm(h_v, agg_message)
 
-        final_embedding = self.node_update_agg(h_v + agg_message_normalized)
+        final_embed = (
+            torch.cat((h_v, agg_message_normalized), dim=1)
+            if self.node_agg_mode == "concat"
+            else h_v + agg_message_normalized
+        )
 
-        return final_embedding, node_attention_var
+        return (
+            final_embed,
+            node_attention_var,
+        )  # self.message_norm(h_v, agg_message), node_attention_var

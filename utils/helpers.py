@@ -1,6 +1,7 @@
 import torch
 import networkx as nx
 import numpy as np
+from sklearn.preprocessing import PowerTransformer
 
 import os
 import pickle
@@ -50,30 +51,35 @@ def extract_node_features(G) -> torch.Tensor:
         print("Oops! Error calculating closeness_vitality for graph: ", G)
 
     barycenter_per_node = set(nx.barycenter(G))  # list
+
     degree_per_node = dict(G.degree())
+
     information_centrality_per_node = nx.information_centrality(
         G, weight="weight"
     )  # dict
+
     betweenness_centrality_per_node = nx.betweenness_centrality(
         G, weight="weight"
     )  # dict
-    articulation_points = set(nx.articulation_points(G))
+
+    # No aps in this dataset - disable for now
+    # articulation_points = set(nx.articulation_points(G))
 
     # Compute the average degree of the graph.
     avg_neighbor_degree = nx.average_neighbor_degree(G, weight="weight")
 
     # for each node, create a tensor of above features
     # return a tensor of shape (num_nodes, num_features)
-    node_fts = torch.zeros((len(G), 7))
+    node_fts = torch.zeros((len(G), 6))
 
     for i, node in enumerate(G.nodes()):
         node_fts[i, 0] = closeness_vit_per_node[node]
-        node_fts[i, 1] = node in barycenter_per_node
+        node_fts[i, 1] = int(node in barycenter_per_node)
         node_fts[i, 2] = degree_per_node[node]
         node_fts[i, 3] = information_centrality_per_node[node]
         node_fts[i, 4] = betweenness_centrality_per_node[node]
-        node_fts[i, 5] = node in articulation_points
-        node_fts[i, 6] = avg_neighbor_degree[node]
+        # node_fts[i, 5] = int(node in articulation_points)
+        node_fts[i, 5] = avg_neighbor_degree[node]
 
     return node_fts
 
@@ -153,47 +159,80 @@ def check_symmetric(a, rtol=1e-05, atol=1e-08):
     return np.allclose(a, a.T, rtol=rtol, atol=atol)
 
 
-def load_all_data(data_dir="dataset", mode="pickle"):
+def load_all_data(data_dir="dataset_all", mode="pickle"):
     samples = []
 
-    dirs = os.listdir(data_dir)
-    for subdir in dirs:
-        gs = []
+    all_node_fts = []
+    all_edge_fts = []
+    all_graph_fts = []
 
-        for filename in sorted(
-            os.listdir(os.path.join(data_dir, subdir)),
+    for i, filename in enumerate(
+        sorted(
+            os.listdir(data_dir),
             key=lambda x: int(x.split("_")[0]),
-        ):
-            # read .txt file and loop each line starting from third line
-            filename_dir = os.path.join(data_dir, subdir, filename)
+        )
+    ):
+        # read .txt file and loop each line starting from third line
+        filename_dir = os.path.join(data_dir, filename)
 
-            g = nx.read_edgelist(filename_dir, nodetype=int, data=(("weight", float),))
+        g = nx.read_edgelist(filename_dir, nodetype=int, data=(("weight", float),))
 
-            # for node in g.nodes():
-            #    g.add_edge(node, node, weight=0.0)
+        # for node in g.nodes():
+        #    g.add_edge(node, node, weight=0.0)
 
-            node_fts = extract_node_features(g)
-            edge_fts = extract_edge_features(g)
-            graph_fts = extract_graph_features(g)
-            adj_numpy = nx.to_numpy_matrix(g)
+        node_fts = extract_node_features(g)
+        all_node_fts.append(node_fts)
 
-            assert check_symmetric(adj_numpy)
+        edge_fts = extract_edge_features(g)
+        all_edge_fts.append(edge_fts)
 
-            adj = torch.tensor(adj_numpy, dtype=torch.float)
+        graph_fts = extract_graph_features(g)
+        all_graph_fts.append(graph_fts)
 
-            edges = torch.tensor([[e[0], e[1]] for e in g.edges()]).t().contiguous()
+        adj_numpy = nx.to_numpy_matrix(g)
 
-            g_tensor = [
-                edges,
-                node_fts,
-                edge_fts,
-                graph_fts,
-                adj,
-            ]
+        assert check_symmetric(adj_numpy)
 
-            gs.append(g_tensor)
-            # For faster loading, uncomment the block below to save the processed data as pickle files
-            # with open("data_processed/" + subdir + ".pickle", "wb") as ft_tensors:
-            #     pickle.dump(gs, ft_tensors)
-        samples.append(gs)
+        adj = torch.tensor(adj_numpy, dtype=torch.float)
+
+        edges = torch.tensor([[e[0], e[1]] for e in g.edges()]).t().contiguous()
+
+        g_tensor = [
+            edges,
+            node_fts,
+            edge_fts,
+            graph_fts,
+            adj,
+        ]
+
+        # gs.append(g_tensor)
+        # For faster loading, uncomment the block below to save the processed data as pickle files
+        # with open("dataset_all_processed/" + str(i) + ".pickle", "wb") as ft_tensors:
+        #    pickle.dump(g_tensor, ft_tensors)
+        samples.append(g_tensor)
+
+    pt_node_fts = PowerTransformer()
+    all_node_fts = torch.vstack(all_node_fts)
+    pt_node_fts.fit(all_node_fts)
+
+    pt_edge_fts = PowerTransformer()
+    all_edge_fts = torch.vstack(all_edge_fts)
+    pt_edge_fts.fit(all_edge_fts)
+
+    pt_graph_fts = PowerTransformer()
+    all_graph_fts = torch.vstack(all_graph_fts)
+    pt_graph_fts.fit(all_graph_fts)
+
+    for i in range(len(samples)):
+        samples[i][1] = torch.tensor(pt_node_fts.transform(samples[i][1])).float()
+        samples[i][2] = torch.tensor(pt_edge_fts.transform(samples[i][2])).float()
+        samples[i][3] = torch.tensor(
+            pt_graph_fts.transform(samples[i][3].reshape(1, -1))
+        ).float()
+        with open("dataset_all_processed/" + str(i) + ".pickle", "wb") as ft_tensors:
+            pickle.dump(samples[i], ft_tensors)
+
     return samples
+
+
+# load_all_data()

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 class TrainerConfig:
     lr: float = 0.002
     weight_decay: float = None
-    num_epochs: int = 10
+    num_epochs: int = 50
     batch_size: int = 1
     validation_split: float = 0.2
     test_split: float = 0.1

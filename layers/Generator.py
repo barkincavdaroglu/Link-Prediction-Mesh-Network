@@ -9,14 +9,24 @@ class Generator(nn.Module):
     def __init__(self, config: GeneratorConfig):
         """ """
         super(Generator, self).__init__()
-        node_in_w_head = (
-            (
-                config.num_heads_node * config.node_out_fts
+
+        if config.head_agg_mode == "concat":
+            node_in_w_head = (
+                (
+                    config.num_heads_node * config.node_out_fts
+                    + config.num_heads_node * config.edge_out_fts
+                )
+                * 2
+                if config.node_agg_mode == "concat"
+                else config.num_heads_node * config.node_out_fts
                 + config.num_heads_node * config.edge_out_fts
             )
-            if config.head_agg_mode == "concat"
-            else config.node_out_fts
-        )
+        else:
+            node_in_w_head = (
+                config.node_out_fts * 2
+                if config.node_agg_mode == "concat"
+                else config.node_out_fts
+            )
 
         self.node_num = config.node_num
 
@@ -32,27 +42,30 @@ class Generator(nn.Module):
             edge_out_fts=config.edge_out_fts,
             num_heads_node=config.num_heads_node,
             num_heads_graph=config.num_heads_graph,
+            num_nodes=config.node_num,
+            node_agg_mode=config.node_agg_mode,
             head_agg_mode=config.head_agg_mode,
+            nr_of_hops=config.nr_of_hops,
         )
+        self.hidden_dim = config.gru_hidden
 
-        self.gru = nn.GRU(
+        self.lstm = nn.LSTM(
             config.node_num * node_in_w_head,
             config.gru_hidden,
         )
 
-        """self.graph_gru = GraphGRU(
-            input_size_1=in_features,
-            hidden_size_1=in_features,
-            input_size_2=in_features * 2,
-            hidden_size_2=in_features,
-            input_size_3=in_features,
-            hidden_size_3=in_features,
+        self.leaky_relu = nn.LeakyReLU(0.2)
+
+        """self.gru = nn.GRU(
+            config.node_num * node_in_w_head,
+            config.gru_hidden,
         )"""
 
         self.ffn = nn.Sequential(
             nn.Linear(
                 config.gru_hidden,
-                int((config.node_num * config.node_num - config.node_num) / 2),
+                # int((config.node_num * config.node_num - config.node_num) / 2),
+                int(config.node_num * config.node_num),
             ),
             nn.Sigmoid(),
         )
@@ -66,14 +79,17 @@ class Generator(nn.Module):
         for input_ in inputs:
             edges, node_fts, edge_fts, graph_fts, adj = input_
 
-            agg_node_fts, agg_edge_fts, node_fts, edge_fts, edges = self.gn(
-                (node_fts, edge_fts, edges, adj)
-            )
+            _, _, node_fts, edge_fts, edges = self.gn((node_fts, edge_fts, edges, adj))
 
             all_node_fts = torch.cat((all_node_fts, node_fts.unsqueeze(0)), dim=0)
 
         all_node_fts = all_node_fts.view(-1, self.node_num * self.out_features)
-        _, hn = self.gru(all_node_fts)
+        h0 = torch.zeros(1, self.hidden_dim).requires_grad_()
+        c0 = torch.zeros(1, self.hidden_dim).requires_grad_()
+
+        _, (hn, _) = self.lstm(all_node_fts, (h0.detach(), c0.detach()))
+
+        # hn = self.leaky_relu(hn)
 
         output = self.ffn(hn)
         return output
