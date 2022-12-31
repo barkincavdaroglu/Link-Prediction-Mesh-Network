@@ -23,16 +23,17 @@ class GraphLightningModule(pl.LightningModule):
         target_adj = target_adj.squeeze()
         adj_predicted = adj_predicted.squeeze()
 
-        upper_target_adj = target_adj[np.triu_indices(19, 1)]
+        # upper_target_adj = target_adj[np.triu_indices(19, 1)]
 
-        # target_adj = target_adj.view(1, -1)
-        loss = self.loss_module(adj_predicted, upper_target_adj)
+        target_adj = target_adj.view(1, -1).squeeze()
+        loss = self.loss_module(adj_predicted, target_adj)
 
         # logs metrics for each training_step,
         # and the average across the epoch, to the progress bar and logger
         self.log(
             "train/loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
         )
+
         return {"loss": loss}
 
     def training_epoch_end(self, outputs):
@@ -48,9 +49,9 @@ class GraphLightningModule(pl.LightningModule):
         _, _, _, _, target_adj = y
         target_adj = target_adj.squeeze()
         adj_predicted = adj_predicted.squeeze()
-        upper_target_adj = target_adj[np.triu_indices(19, 1)]
-        # target_adj = target_adj.view(1, -1)
-        loss = self.loss_module(adj_predicted, upper_target_adj)
+        # upper_target_adj = target_adj[np.triu_indices(19, 1)]
+        target_adj = target_adj.view(1, -1).squeeze()
+        loss = self.loss_module(adj_predicted, target_adj)
         # self.log("val/loss", loss)
         return {"loss": loss}
 
@@ -68,5 +69,5 @@ class GraphLightningModule(pl.LightningModule):
         self.log("test_loss", loss)
 
     def configure_optimizers(self):
-        optimizer = optimizer = torch.optim.RMSprop(self.parameters(), lr=0.002)
+        optimizer = torch.optim.RMSprop(self.parameters(), lr=0.0005)
         return optimizer
