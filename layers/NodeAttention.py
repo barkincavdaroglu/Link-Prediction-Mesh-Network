@@ -98,7 +98,6 @@ class NodeAttentionHead(nn.Module):
         # Normalize attention scores by dividing each by neighborhood sum
         node_attention_norm = torch.log(node_attention / node_attention_sum)
 
-        # print("NORMALIZED ATT: ", node_attention_norm, "\n")
         node_attention_var = torch.var(node_attention_norm)
 
         # Get the node features of neighbors for all nodes
