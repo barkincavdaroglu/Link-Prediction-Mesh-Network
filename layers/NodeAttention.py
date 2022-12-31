@@ -20,6 +20,8 @@ class NodeAttentionHead(nn.Module):
     ):
         """
         Aggregates and updates node features using attention mechanism.
+        "Graph Attention Networks"
+        <https://arxiv.org/abs/1710.10903>
 
         Args:
             node_in_fts: Dimensionality of node input features
