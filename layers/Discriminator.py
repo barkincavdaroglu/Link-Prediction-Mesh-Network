@@ -16,10 +16,11 @@ class Discriminator(nn.Module):
             ),
             nn.LeakyReLU(0.2),
             nn.Linear(
-                discriminator_config.hidden_size, discriminator_config.hidden_size / 2
+                discriminator_config.hidden_size,
+                int(discriminator_config.hidden_size / 2),
             ),
             nn.LeakyReLU(0.2),
-            nn.Linear(discriminator_config.hidden_size / 2, 1),
+            nn.Linear(int(discriminator_config.hidden_size / 2), 1),
             nn.Sigmoid(),
         )
 
