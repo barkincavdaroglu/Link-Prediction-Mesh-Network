@@ -5,6 +5,7 @@ from torch.utils.data import random_split, DataLoader
 import numpy as np
 from torch.utils.data.sampler import SubsetRandomSampler
 from configs.DataConfig import DataConfig
+from .data_helpers import *
 
 
 class GraphDataModule(pl.LightningDataModule):
@@ -63,15 +64,27 @@ class GraphDataModule(pl.LightningDataModule):
 
     def train_dataloader(self):
         return DataLoader(
-            self.dataset, batch_size=self.batch_size, sampler=self.train_sampler
+            self.dataset,
+            batch_size=self.batch_size,
+            sampler=self.train_sampler,
+            collate_fn=collate_fn,
+            drop_last=True,
         )
 
     def val_dataloader(self):
         return DataLoader(
-            self.dataset, batch_size=self.batch_size, sampler=self.valid_sampler
+            self.dataset,
+            batch_size=self.batch_size,
+            sampler=self.valid_sampler,
+            collate_fn=collate_fn,
+            drop_last=True,
         )
 
     def test_dataloader(self):
         return DataLoader(
-            self.dataset, batch_size=self.batch_size, sampler=self.test_sampler
+            self.dataset,
+            batch_size=self.batch_size,
+            sampler=self.test_sampler,
+            collate_fn=collate_fn,
+            drop_last=True,
         )

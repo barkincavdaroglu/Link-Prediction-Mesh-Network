@@ -11,7 +11,7 @@ def collate_fn(
     batch_index_shift = torch.tensor([0])
     temporal_indices_shifts = torch.tensor([])
 
-    batch_edges_collated = torch.tensor([])
+    batch_edges_collated = torch.tensor([], dtype=torch.long)
     batch_node_fts_collated = torch.tensor([])
     batch_edge_fts_collated = torch.tensor([])
     batch_graph_fts_collated = torch.tensor([])
@@ -20,7 +20,7 @@ def collate_fn(
         b_index_shift = batch_index_shift[-1]
 
         temporal_index_shift = torch.tensor([0])
-        temporal_edges_collated = torch.tensor([])
+        temporal_edges_collated = torch.tensor([], dtype=torch.long)
         temporal_node_fts_collated = torch.tensor([])
         temporal_edge_fts_collated = torch.tensor([])
         temporal_graph_fts_collated = torch.tensor([])
@@ -86,8 +86,8 @@ def collate_fn(
         )
 
     return [
-        batch_index_shift,
-        temporal_indices_shifts,
+        # batch_index_shift,
+        # temporal_indices_shifts,
         batch_edges_collated,
         batch_node_fts_collated,
         batch_edge_fts_collated,
