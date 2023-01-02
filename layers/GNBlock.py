@@ -79,9 +79,12 @@ class GNBlock(nn.Module):
             else None
         )
 
-    def forward(self, input):
-        node_fts, edge_fts, edges, adj = input
-
+    def forward(
+        self,
+        node_fts: torch.Tensor,
+        edge_fts: torch.Tensor,
+        edges: torch.Tensor,
+    ):
         if self.edge_update is not None:
             edge_fts = self.edge_update([node_fts, edge_fts, edges])
 
