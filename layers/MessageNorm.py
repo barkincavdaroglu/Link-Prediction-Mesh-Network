@@ -14,7 +14,6 @@ class MessageNorm(torch.nn.Module):
         super().__init__()
 
         self.scale = Parameter(torch.Tensor([1.0]), requires_grad=learn_scale)
-
         self.reset_parameters()
 
     def reset_parameters(self):

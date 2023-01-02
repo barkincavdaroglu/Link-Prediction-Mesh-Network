@@ -14,6 +14,7 @@ class NodeAttentionHead(nn.Module):
         node_out_fts,
         edge_in_fts,
         node_agg_mode,
+        messagenorm_learn_scale,
         alpha=0.2,
         kernel_init=nn.init.xavier_uniform_,
         kernel_reg=None,
@@ -38,7 +39,7 @@ class NodeAttentionHead(nn.Module):
         self.edge_in_fts = edge_in_fts
         self.node_agg_mode = node_agg_mode
 
-        self.message_norm = MessageNorm(learn_scale=True)
+        self.message_norm = MessageNorm(learn_scale=messagenorm_learn_scale)
 
         self.kernel_init = kernel_init
         self.kernel_reg = kernel_reg
@@ -123,4 +124,4 @@ class NodeAttentionHead(nn.Module):
         return (
             final_embed,
             node_attention_var,
-        )  # self.message_norm(h_v, agg_message), node_attention_var
+        )

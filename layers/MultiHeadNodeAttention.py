@@ -12,7 +12,7 @@ class MultiHeadNodeAttention(nn.Module):
         num_heads,
         head_agg_mode,
         node_agg_mode,
-        num_nodes,
+        messagenorm_learn_scale,
         alpha=0.2,
         kernel_init=nn.init.xavier_uniform_,
         kernel_reg=None,
@@ -34,6 +34,7 @@ class MultiHeadNodeAttention(nn.Module):
                     node_out_fts,
                     edge_in_fts,
                     node_agg_mode,
+                    messagenorm_learn_scale,
                     alpha,
                     kernel_init,
                     kernel_reg,
@@ -62,6 +63,7 @@ class MultiHeadNodeAttention(nn.Module):
 
         for head in self.attention_heads:
             node_out, node_attention_var = head([node_fts, edge_fts, edges])
+            # TODO: Log the attention variance for each head
             node_attention_var = node_attention_var.unsqueeze(dim=0)
 
             node_ft_embeds = torch.cat((node_ft_embeds, node_out.unsqueeze(0)), dim=0)
@@ -69,12 +71,10 @@ class MultiHeadNodeAttention(nn.Module):
                 (node_attentions_var, node_attention_var), dim=0
             )
 
-        # normalize attention scores using softmax
         node_attentions_var = torch.exp(node_attentions_var)
         node_attentions_var = node_attentions_var / torch.sum(node_attentions_var)
 
         if self.head_agg_mode == "concat":
-            # multiply each node_ft_embed with respective node_attentions_var and concat results
             node_ft_embeds = torch.cat(
                 [
                     node_ft_embeds[i] * node_attentions_var[i]
@@ -83,7 +83,6 @@ class MultiHeadNodeAttention(nn.Module):
                 dim=1,
             )
         elif self.head_agg_mode == "weighted_mean":
-            # compute weighted mean of node_ft_embeds and edge_ft_embeds
             node_ft_embeds = self.leaky_relu(
                 torch.mul(
                     node_attentions_var.unsqueeze(1).unsqueeze(1), node_ft_embeds
@@ -91,7 +90,6 @@ class MultiHeadNodeAttention(nn.Module):
                 / node_attention_var.sum()
             )
         else:
-            # compute mean of node_ft_embeds
             node_ft_embeds = node_ft_embeds.mean(dim=0)
 
         return node_ft_embeds

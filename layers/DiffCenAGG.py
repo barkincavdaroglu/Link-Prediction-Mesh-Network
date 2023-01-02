@@ -9,8 +9,8 @@ class DiffCenAGG(nn.Module):
         self.gru = nn.GRU(in_dim, out_dim)
 
     def order_nodes_by_diffcen(
-        self, node_embeds: torch.tensor, adj: torch.tensor, t: int
-    ) -> torch.tensor:
+        self, node_embeds: torch.Tensor, adj: torch.Tensor, t: int
+    ) -> torch.Tensor:
         """
         Order nodes by decreasing diffusion centrality.
         Args:
