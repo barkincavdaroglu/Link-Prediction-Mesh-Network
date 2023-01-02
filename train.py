@@ -11,7 +11,6 @@ from data_modules.data_module import GraphDataModule
 from pytorch_lightning.loggers import NeptuneLogger, WandbLogger
 from dotenv import load_dotenv
 import os
-import optuna
 
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 
@@ -87,30 +86,3 @@ neptune_logger.log_model_summary(model=pl_model, max_depth=-1)
 neptune_logger.log_hyperparams(params=PARAMS)
 
 trainer.fit(pl_model, datamodule=gd_module)
-
-"""
-# Run learning rate finder
-lr_finder = trainer.tuner.lr_find(pl_model, gd_module)
-
-# Results can be found in
-print(lr_finder.results)
-
-# Plot with
-fig = lr_finder.plot(suggest=True)
-fig.show()
-
-# Pick point based on plot, or get suggestion
-new_lr = lr_finder.suggestion()
-
-print(new_lr)
-# update hparams of the model
-pl_model.lr = new_lr
-
-# neptune_logger.log_hyperparams(params=trainer_config)
-neptune_logger.log_model_summary(model=pl_model, max_depth=-1)
-neptune_logger.log_hyperparams(params=PARAMS)
-
-# Fit model
-trainer.fit(pl_model, datamodule=gd_module)
-
-"""
