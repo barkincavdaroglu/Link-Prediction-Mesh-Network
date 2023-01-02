@@ -3,5 +3,5 @@ from dataclasses import dataclass
 
 @dataclass
 class DiscriminatorConfig:
-    input_size = 0
-    hidden_size = 0
+    input_size = 19 * 19
+    hidden_size = 256

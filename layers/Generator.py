@@ -30,7 +30,6 @@ class Generator(nn.Module):
 
         self.node_num = config.node_num
 
-        self.in_features = config.in_features
         self.out_features = node_in_w_head
 
         self.gn = GNBlock(
@@ -42,24 +41,27 @@ class Generator(nn.Module):
             edge_out_fts=config.edge_out_fts,
             num_heads_node=config.num_heads_node,
             num_heads_graph=config.num_heads_graph,
-            num_nodes=config.node_num,
             node_agg_mode=config.node_agg_mode,
+            residual_mode=config.residual_mode,
+            messagenorm_learn_scale=config.messagenorm_learn_scale,
             head_agg_mode=config.head_agg_mode,
             nr_of_hops=config.nr_of_hops,
         )
         self.hidden_dim = config.gru_hidden
 
-        self.lstm = nn.LSTM(
-            config.node_num * node_in_w_head,
-            config.gru_hidden,
-        )
+        # TODO: Add BatchNorm1d before passing to self.rnn
 
-        self.leaky_relu = nn.LeakyReLU(0.2)
-
-        """self.gru = nn.GRU(
+        """self.rnn = nn.LSTM(
             config.node_num * node_in_w_head,
             config.gru_hidden,
         )"""
+
+        self.leaky_relu = nn.LeakyReLU(0.2)
+
+        self.rnn = nn.GRU(
+            config.node_num * node_in_w_head,
+            config.gru_hidden,
+        )
 
         self.ffn = nn.Sequential(
             nn.Linear(
@@ -85,9 +87,8 @@ class Generator(nn.Module):
 
         all_node_fts = all_node_fts.view(-1, self.node_num * self.out_features)
         h0 = torch.zeros(1, self.hidden_dim).requires_grad_()
-        c0 = torch.zeros(1, self.hidden_dim).requires_grad_()
 
-        _, (hn, _) = self.lstm(all_node_fts, (h0.detach(), c0.detach()))
+        _, hn = self.rnn(all_node_fts, h0.detach())
 
         # hn = self.leaky_relu(hn)
 

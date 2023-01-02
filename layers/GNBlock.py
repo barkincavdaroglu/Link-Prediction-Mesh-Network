@@ -5,7 +5,6 @@ from .MultiHeadNodeAttention import MultiHeadNodeAttention
 from .MultiHeadGraphAttention import MultiHeadGraphAttention
 from .EdgeUpdate import EdgeUpdate
 from .DiffCenAGG import DiffCenAGG
-from .GAT import GATLayer
 
 
 class GNBlock(nn.Module):
@@ -19,8 +18,9 @@ class GNBlock(nn.Module):
         edge_out_fts,
         num_heads_node,
         num_heads_graph,
-        num_nodes,
         node_agg_mode,
+        residual_mode,
+        messagenorm_learn_scale,
         update_edge_first=False,
         head_agg_mode="mean",
         nr_of_hops=2,
@@ -49,6 +49,7 @@ class GNBlock(nn.Module):
         )
 
         self.nr_of_hops = nr_of_hops
+        self.residual_mode = residual_mode
 
         hops = []
         updated_dim = node_in_fts
@@ -61,14 +62,22 @@ class GNBlock(nn.Module):
                     num_heads=num_heads_node,
                     head_agg_mode=head_agg_mode,
                     node_agg_mode=node_agg_mode,
-                    num_nodes=num_nodes,
+                    messagenorm_learn_scale=messagenorm_learn_scale,
                 )
             )
-            updated_dim = node_out_fts
+            updated_dim = node_in_w_head
 
         self.hops = nn.ModuleList(hops)
-        self.W_prior = torch.nn.Parameter(torch.Tensor(node_out_fts, node_out_fts))
-        self.W_curr = torch.nn.Parameter(torch.Tensor(node_out_fts, node_out_fts))
+        self.W_prior = (
+            torch.nn.Parameter(torch.Tensor(node_out_fts, node_out_fts))
+            if residual_mode == "gated"
+            else None
+        )
+        self.W_curr = (
+            torch.nn.Parameter(torch.Tensor(node_out_fts, node_out_fts))
+            if residual_mode == "gated"
+            else None
+        )
 
     def forward(self, input):
         node_fts, edge_fts, edges, adj = input
@@ -82,11 +91,16 @@ class GNBlock(nn.Module):
             node_fts_curr = layer([node_fts, edge_fts, edges])
 
             if node_fts_prior is not None:
-                gate = torch.sigmoid(
-                    torch.matmul(node_fts_prior, self.W_prior)
-                    + torch.matmul(node_fts_curr, self.W_curr)
-                )
-                node_fts = gate * node_fts_curr + (1 - gate) * node_fts_prior
+                if self.residual_mode == "gated":
+                    gate = torch.sigmoid(
+                        torch.matmul(node_fts_prior, self.W_prior)
+                        + torch.matmul(node_fts_curr, self.W_curr)
+                    )
+                    node_fts = gate * node_fts_curr + (1 - gate) * node_fts_prior
+                elif self.residual_mode == "add":
+                    node_fts = node_fts_curr + node_fts_prior
+                else:  # concat
+                    node_fts = torch.cat((node_fts_curr, node_fts_prior), dim=1)
             else:
                 node_fts = torch.clone(node_fts_curr)
             node_fts_prior = torch.clone(node_fts)

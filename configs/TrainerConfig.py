@@ -1,13 +1,19 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 
 
 @dataclass
 class TrainerConfig:
-    lr: float = 0.002
-    weight_decay: float = None
-    num_epochs: int = 50
-    batch_size: int = 1
-    validation_split: float = 0.2
-    test_split: float = 0.1
-    shuffle_dataset: bool = True
-    random_seed: int = 42
+    # Learning rate
+    lr: float = 0.001  # 0.0025  # previously 0.0005
+    # https://pytorch-lightning.readthedocs.io/en/stable/advanced/training_tricks.html#gradient-clipping
+    is_clip_grads: bool = False
+    gradient_clip_val: float = 10.0
+    gradient_clip_algorithm: str = "norm"
+
+    track_grad_norm: int = 2
+    # Weight decay / L2 Regularization
+    weight_decay: float = 0.0005
+    num_epochs: int = 20
+
+    def dict(self):
+        return {k: str(v) for k, v in asdict(self).items()}
