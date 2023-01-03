@@ -7,7 +7,7 @@ class DataConfig:
     data_dir: str = "dataset_all_processed"
     # How to load each sample
     mode: str = "pickle"
-    batch_size: int = 1
+    batch_size: int = 4
     # Size of the validation set (as a fraction of the training set)
     validation_split: float = 0.1
     # Size of the test set (as a fraction of the whole dataset, remaining is used for training)

@@ -98,6 +98,7 @@ class NodeAttentionHead(nn.Module):
         # Repeat the sum for each neighbor of the node
         node_attention_sum = node_attention_sum[edges_undirected[:, 0]]
 
+        # TODO: Is logsoftmax vs softmax?
         # Normalize attention scores by dividing each by neighborhood sum
         node_attention_norm = torch.log(node_attention / node_attention_sum)
 

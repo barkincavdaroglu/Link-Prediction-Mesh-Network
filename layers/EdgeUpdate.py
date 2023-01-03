@@ -19,7 +19,9 @@ class EdgeUpdate(torch.nn.Module):
 
     def forward(
         self,
-        inputs: torch.Tensor,
+        node_fts: torch.Tensor,
+        edge_fts: torch.Tensor,
+        edges: torch.Tensor,
     ) -> torch.Tensor:
         """
         Args:
@@ -27,6 +29,7 @@ class EdgeUpdate(torch.nn.Module):
         Returns:
             edge_fts: updated edge features
         """
+        inputs = (node_fts, edge_fts, edges)
         node_fts, edge_fts, edges = inputs
 
         node_fts, edge_fts, edges = (
