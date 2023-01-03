@@ -9,10 +9,6 @@ from .data_helpers import *
 
 
 class GraphDataModule(pl.LightningDataModule):
-    """
-    DataModule used for semantic segmentation in geometric generalization project
-    """
-
     def __init__(
         self,
         data_config: DataConfig,
