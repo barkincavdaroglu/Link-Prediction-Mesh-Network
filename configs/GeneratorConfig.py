@@ -16,7 +16,7 @@ class GeneratorConfig:
     # Dimension of output edge features
     edge_out_fts: int = 32
     # Number of attention heads for node update layer
-    num_heads_node: int = 1
+    num_heads_node: int = 2
     # Number of attention heads for graph update layer
     num_heads_graph: int = 5
     # Number of nodes in the graph

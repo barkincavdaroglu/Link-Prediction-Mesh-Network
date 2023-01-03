@@ -83,6 +83,7 @@ class MultiHeadNodeAttention(nn.Module):
                 dim=1,
             )
         elif self.head_agg_mode == "weighted_mean":
+            # TODO: Is nonlinear activation necessary here?
             node_ft_embeds = self.leaky_relu(
                 torch.mul(
                     node_attentions_var.unsqueeze(1).unsqueeze(1), node_ft_embeds

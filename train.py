@@ -1,5 +1,6 @@
 from torch import nn
 from layers.Generator import Generator
+from layers.LossModule import LossModule
 from layers.Discriminator import Discriminator
 from configs.GeneratorConfig import GeneratorConfig
 from configs.TrainerConfig import TrainerConfig
@@ -28,7 +29,9 @@ neptune_logger = NeptuneLogger(
 
 wandb_logger = WandbLogger(project="test-project")
 
-pretrain_loss_mse = nn.L1Loss(reduction="sum")  # nn.MSELoss(reduction="sum")
+pretrain_loss_mse = LossModule(
+    nn.MSELoss(reduction="sum")  # nn.MSELoss(reduction="sum")
+)  # nn.L1Loss(reduction="sum")  # nn.MSELoss(reduction="sum")
 gan_loss_bce = nn.BCELoss()
 
 generator_config = GeneratorConfig()
@@ -55,6 +58,8 @@ pl_model = GraphLightningModule(
     trainer_config.is_clip_grads,
     trainer_config.gradient_clip_val,
     trainer_config.gradient_clip_algorithm,
+    trainer_config.pretrain_epochs,
+    trainer_config.pretrain_epochs + trainer_config.gan_epochs,
 )
 
 wandb_logger.watch(pl_model, log="all", log_freq=100)
@@ -76,7 +81,7 @@ model_checkpoint = ModelCheckpoint(
 trainer = Trainer(
     logger=wandb_logger,
     callbacks=[lr_logger, model_checkpoint],
-    max_epochs=trainer_config.num_epochs,
+    max_epochs=trainer_config.pretrain_epochs + trainer_config.gan_epochs,
     track_grad_norm=trainer_config.track_grad_norm,  # track gradient norm
     # gradient_clip_val=trainer_config.gradient_clip_val,
     # gradient_clip_algorithm=trainer_config.gradient_clip_algorithm,
