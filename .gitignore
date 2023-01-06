@@ -1,0 +1,10 @@
+*.pyc 
+*.txt
+*.code-workspace
+*.pickle
+*.env
+wandb/
+model_ckpts1/
+lightning_logs/
+.pyre*
+playground.py

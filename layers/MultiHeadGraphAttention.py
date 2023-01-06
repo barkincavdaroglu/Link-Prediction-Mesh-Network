@@ -56,7 +56,7 @@ class MultiHeadGraphAttention(nn.Module):
             torch.tensor([]),
         )
 
-        for head in self.heads:
+        for head in self.attention_heads:
             node_out, edge_out, node_attention_var, edge_attention_var = head(
                 [node_fts, edge_fts, edges]
             )
