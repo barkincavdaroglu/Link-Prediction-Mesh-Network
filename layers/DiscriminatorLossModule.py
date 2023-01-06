@@ -14,7 +14,3 @@ class DiscriminatorLossModule(nn.Module):
             target: Ground truth adjacency matrix (batch_size x num_nodes x num_nodes)
         """
         return self.loss(pred, target)
-        # batched_target_adj = target.reshape(-1, target.shape[-1] * target.shape[-1])
-        # batched_predicted_adj = pred.reshape(-1, target.shape[-1] * target.shape[-1])
-
-        # return self.loss(batched_predicted_adj, batched_target_adj)
