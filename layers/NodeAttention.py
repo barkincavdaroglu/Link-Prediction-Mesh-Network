@@ -66,7 +66,6 @@ class NodeAttentionHead(nn.Module):
         edge_fts_undirected = torch.cat([edge_fts, edge_fts], dim=0)
 
         edges = torch.squeeze(edges)
-        # edges = edges.reshape(edges.shape[1], 2)
         edges_undirected = torch.cat([edges, edges.flip(0)], dim=1)
 
         # Transform initial node features
@@ -80,7 +79,6 @@ class NodeAttentionHead(nn.Module):
                 torch.cat(
                     (h_v[edges_undirected[0]], h_v[edges_undirected[1]]), dim=0
                 ).view(-1, 2 * self.node_out_fts),
-                # h_v[edges_undirected].view(-1, 2 * self.node_out_fts),
                 edge_fts_undirected,
             ),
             dim=1,

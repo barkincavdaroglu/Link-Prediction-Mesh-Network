@@ -14,16 +14,6 @@ from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 
 load_dotenv()
 
-# NEPTUNE_TOKEN = os.getenv("NEPTUNE_API_TOKEN")
-# NEPTUNE_PROJECT = os.getenv("NEPTUNE_PROJECT")
-
-# neptune_logger = NeptuneLogger(
-#     api_key=NEPTUNE_TOKEN,
-#     project=NEPTUNE_PROJECT,
-#     tags=["simple", "showcase"],
-#     log_model_checkpoints=True,
-# )
-
 wandb_logger = WandbLogger(project="test-project")
 
 gan_config = GANConfig()
@@ -70,8 +60,5 @@ trainer = Trainer(
     # gradient_clip_val=trainer_config.gradient_clip_val,
     # gradient_clip_algorithm=trainer_config.gradient_clip_algorithm,
 )
-
-# neptune_logger.log_model_summary(model=pl_model, max_depth=-1)
-# neptune_logger.log_hyperparams(params=PARAMS)
 
 trainer.fit(pl_model, datamodule=gd_module)

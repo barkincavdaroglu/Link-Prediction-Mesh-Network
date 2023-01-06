@@ -49,6 +49,7 @@ class GNBlock(nn.Module):
 
         hops = []
         updated_dim = specs.node_in_fts
+        # TODO: Is deepcopy the best way to do this?
         for _ in range(specs.nr_of_hops):
             hops.append(copy.deepcopy(model))
             model.node_in_fts = updated_dim
