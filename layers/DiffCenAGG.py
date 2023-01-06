@@ -4,9 +4,27 @@ import numpy as np
 
 
 class DiffCenAGG(nn.Module):
-    def __init__(self, in_dim: int, out_dim: int) -> None:
+    def __init__(self, in_dim: int, hidden_dim: int, recurrent_model="lstm") -> None:
         super().__init__()
-        self.gru = nn.GRU(in_dim, out_dim)
+        self.recurrent_model = recurrent_model
+        if recurrent_model == "lstm":
+            self.rnn = nn.LSTM(
+                in_dim,  # config.node_num * node_in_w_head,
+                hidden_dim,  # gru_hidden,
+                batch_first=True,
+            )
+        elif recurrent_model == "gru":
+            self.rnn = nn.GRU(
+                in_dim,
+                hidden_dim,
+                batch_first=True,
+            )
+        else:
+            self.rnn = nn.RNN(
+                in_dim,
+                hidden_dim,
+                batch_first=True,
+            )
 
     def order_nodes_by_diffcen(
         self, node_embeds: torch.Tensor, adj: torch.Tensor, t: int
@@ -27,20 +45,26 @@ class DiffCenAGG(nn.Module):
             H = torch.add(H, torch.matrix_power(q * adj, i))
 
         H = torch.matmul(H, eye)
-        embeds_ordered = node_embeds[torch.argsort(H.sum(axis=1), descending=True)]
+        embeds_ordered = node_embeds[torch.argsort(H.sum(dim=1), descending=True)]
 
         return embeds_ordered
 
     def forward(self, inputs):
         """
         Args:
-            node_embeds: Node embeddings.
+            inputs: (node_embeds, edge_fts, edges)
         Returns:
+            hn: Hidden state of the last step.
         """
-        node_embeds, adj = inputs
+        node_embeds, edge_fts, edges = inputs
 
-        adj = adj.squeeze()
+        adj = torch.zeros((node_embeds.shape[0], node_embeds.shape[0]))
+        adj[edges[0], edges[1]] = edge_fts[:, 0]
+
         embeds_ordered = self.order_nodes_by_diffcen(node_embeds, adj, 2)
-        _, hn = self.gru(embeds_ordered)
+        if self.recurrent_model == "lstm":
+            _, (hn, _) = self.rnn(embeds_ordered)
+        else:
+            _, hn = self.rnn(embeds_ordered)
 
         return hn

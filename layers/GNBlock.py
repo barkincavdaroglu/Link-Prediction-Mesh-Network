@@ -1,3 +1,4 @@
+import copy
 from ctypes import c_int
 import torch
 import torch.nn as nn
@@ -10,72 +11,58 @@ from .DiffCenAGG import DiffCenAGG
 class GNBlock(nn.Module):
     def __init__(
         self,
-        graph_in_fts,
-        graph_out_fts,
-        node_in_fts,
-        node_out_fts,
-        edge_in_fts,
-        edge_out_fts,
-        num_heads_node,
-        num_heads_graph,
-        node_agg_mode,
-        residual_mode,
-        messagenorm_learn_scale,
-        update_edge_first=False,
-        head_agg_mode="mean",
-        nr_of_hops=2,
+        specs,
+        model,
     ):
         super(GNBlock, self).__init__()
         node_in_w_head = 0
-        if head_agg_mode == "concat":
+        if specs.head_agg_mode == "concat":
             node_in_w_head = (
-                (num_heads_node * node_out_fts + num_heads_node * edge_out_fts) * 2
-                if node_agg_mode == "concat"
-                else num_heads_node * node_out_fts + num_heads_node * edge_out_fts
+                (
+                    specs.num_heads_node * specs.node_out_fts
+                    + specs.num_heads_node * specs.edge_out_fts
+                )
+                * 2
+                if specs.node_agg_mode == "concat"
+                else specs.num_heads_node * specs.node_out_fts
+                + specs.num_heads_node * specs.edge_out_fts
             )
         else:
             node_in_w_head = (
-                node_out_fts * 2 if node_agg_mode == "concat" else node_out_fts
+                specs.node_out_fts * 2
+                if specs.node_agg_mode == "concat"
+                else specs.node_out_fts
             )
 
         self.edge_update = (
             EdgeUpdate(
-                in_fts=node_in_fts,
-                edge_in_fts=edge_in_fts,
-                out_dim=edge_out_fts,
+                in_fts=specs.node_in_fts,
+                edge_in_fts=specs.edge_in_fts,
+                out_dim=specs.edge_out_fts,
             )
-            if update_edge_first
+            if specs.update_edge_first
             else None
         )
 
-        self.nr_of_hops = nr_of_hops
-        self.residual_mode = residual_mode
+        self.nr_of_hops = specs.nr_of_hops
+        self.residual_mode = specs.residual_mode
 
         hops = []
-        updated_dim = node_in_fts
-        for _ in range(nr_of_hops):
-            hops.append(
-                MultiHeadNodeAttention(
-                    node_in_fts=updated_dim,
-                    node_out_fts=node_out_fts,
-                    edge_in_fts=edge_in_fts,
-                    num_heads=num_heads_node,
-                    head_agg_mode=head_agg_mode,
-                    node_agg_mode=node_agg_mode,
-                    messagenorm_learn_scale=messagenorm_learn_scale,
-                )
-            )
+        updated_dim = specs.node_in_fts
+        for _ in range(specs.nr_of_hops):
+            hops.append(copy.deepcopy(model))
+            model.node_in_fts = updated_dim
             updated_dim = node_in_w_head
 
         self.hops = nn.ModuleList(hops)
         self.W_prior = (
-            torch.nn.Parameter(torch.Tensor(node_out_fts, node_out_fts))
-            if residual_mode == "gated"
+            torch.nn.Parameter(torch.Tensor(specs.node_out_fts, specs.node_out_fts))
+            if specs.residual_mode == "gated"
             else None
         )
         self.W_curr = (
-            torch.nn.Parameter(torch.Tensor(node_out_fts, node_out_fts))
-            if residual_mode == "gated"
+            torch.nn.Parameter(torch.Tensor(specs.node_out_fts, specs.node_out_fts))
+            if specs.residual_mode == "gated"
             else None
         )
 

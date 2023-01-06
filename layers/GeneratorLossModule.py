@@ -2,9 +2,9 @@ import torch
 import torch.nn as nn
 
 
-class LossModule(nn.Module):
+class GeneratorLossModule(nn.Module):
     def __init__(self, loss):
-        super(LossModule, self).__init__()
+        super(GeneratorLossModule, self).__init__()
         self.loss = loss
 
     def forward(self, pred, target) -> torch.Tensor:

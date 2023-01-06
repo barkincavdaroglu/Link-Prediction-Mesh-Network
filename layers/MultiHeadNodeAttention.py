@@ -6,40 +6,34 @@ from .NodeAttention import NodeAttentionHead
 class MultiHeadNodeAttention(nn.Module):
     def __init__(
         self,
-        node_in_fts,
-        node_out_fts,
-        edge_in_fts,
-        num_heads,
-        head_agg_mode,
-        node_agg_mode,
-        messagenorm_learn_scale,
-        alpha=0.2,
-        kernel_init=nn.init.xavier_uniform_,
-        kernel_reg=None,
+        specs,
+        attention_head,
     ):
         super().__init__()
-        self.node_in_fts = node_in_fts
-        self.node_out_fts = node_out_fts
-        self.edge_in_fts = edge_in_fts
-        self.num_heads = num_heads
-        self.head_agg_mode = head_agg_mode
+        self.node_in_fts = specs.node_in_fts
+        self.node_out_fts = specs.node_out_fts
+        self.edge_in_fts = specs.edge_in_fts
+        self.num_heads = specs.num_heads_node
+        self.head_agg_mode = specs.head_agg_mode
 
-        self.head_coef = nn.Parameter(torch.ones(num_heads, 19, node_out_fts))
-        self.leaky_relu = nn.LeakyReLU(alpha)
+        self.head_coef = nn.Parameter(
+            torch.ones(specs.num_heads_node, 19, specs.node_out_fts)
+        )
+        self.leaky_relu = nn.LeakyReLU(specs.alpha)
 
         self.attention_heads = nn.ModuleList(
             [
-                NodeAttentionHead(
-                    node_in_fts,
-                    node_out_fts,
-                    edge_in_fts,
-                    node_agg_mode,
-                    messagenorm_learn_scale,
-                    alpha,
-                    kernel_init,
-                    kernel_reg,
+                attention_head(
+                    specs.node_in_fts,
+                    specs.node_out_fts,
+                    specs.edge_in_fts,
+                    specs.node_agg_mode,
+                    specs.messagenorm_learn_scale,
+                    specs.alpha,
+                    specs.kernel_init,
+                    specs.kernel_reg,
                 )
-                for _ in range(num_heads)
+                for _ in range(specs.num_heads_node)
             ]
         )
 

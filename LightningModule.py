@@ -3,28 +3,29 @@ from email import generator
 import torch
 import pytorch_lightning as pl
 import numpy as np
-import torch.nn as nn
+from adapters.gen_loss_adapter import create_gen_loss_module
+from adapters.disc_loss_adapter import create_disc_loss_module
+from configs.GANConfig import GANConfig
+from adapters.model_adapters import create_generator_model, create_discriminator_model
 
 
 class GraphLightningModule(pl.LightningModule):
     def __init__(
         self,
-        generator,
-        discriminator,
-        pretrain_loss_module,
-        gan_loss_module,
+        gan_config: GANConfig,
         lr,
         is_clip_grads,
         gradient_clip_val,
         gradient_clip_algorithm,
         pretrain_epochs,
-        total_epochs,
     ):
         super().__init__()
-        self.generator = generator
-        self.discriminator = discriminator
-        self.pretrain_loss_module = pretrain_loss_module
-        self.gan_loss_module = gan_loss_module
+        self.generator = create_generator_model(gan_config.generator_config)
+        self.discriminator = create_discriminator_model(gan_config.discriminator_config)
+
+        self.pretrain_loss_module = create_gen_loss_module(gan_config.generator_config)
+        self.gan_loss_module = create_disc_loss_module(gan_config.discriminator_config)
+
         self.automatic_optimization = False
         self.lr = lr
         self.gradient_clip_val = gradient_clip_val
