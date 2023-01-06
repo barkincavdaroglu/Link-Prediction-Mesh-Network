@@ -28,7 +28,7 @@ def model_adapter(model_string: str) -> nn.Module:
 def create_generator_model(config: GeneratorConfig) -> nn.Module:
     """
     Args:
-        model_string: Name of model to be imported
+        config: GeneratorConfig object
     """
     model_string = config.model
     if model_string == "attention_heads":
@@ -51,7 +51,7 @@ def create_generator_model(config: GeneratorConfig) -> nn.Module:
 def create_discriminator_model(config: DiscriminatorConfig) -> nn.Module:
     """
     Args:
-        model_string: Name of model to be imported
+        config: DiscriminatorConfig object
     """
     model = Discriminator(config)
 

@@ -7,7 +7,7 @@ from layers.GeneratorLossModule import GeneratorLossModule
 def create_gen_loss_module(config: GeneratorConfig) -> nn.Module:
     """
     Args:
-        model_string: Name of model to be imported
+        config: GeneratorConfig object
     """
     gen_loss_func_, gen_reduction = config.loss_module
 
