@@ -2,10 +2,10 @@ import copy
 from ctypes import c_int
 import torch
 import torch.nn as nn
-from .MultiHeadNodeAttention import MultiHeadNodeAttention
 from .MultiHeadGraphAttention import MultiHeadGraphAttention
 from .EdgeUpdate import EdgeUpdate
 from .DiffCenAGG import DiffCenAGG
+from torch_geometric.nn import GATConv
 
 
 class GNBlock(nn.Module):
@@ -51,8 +51,15 @@ class GNBlock(nn.Module):
         updated_dim = specs.node_in_fts
         # TODO: Is deepcopy the best way to do this?
         for _ in range(specs.nr_of_hops):
-            hops.append(copy.deepcopy(model))
-            model.node_in_fts = updated_dim
+            hops.append(
+                GATConv(
+                    in_channels=updated_dim,
+                    out_channels=specs.node_out_fts,
+                    heads=specs.num_heads_node,
+                )
+            )
+            # hops.append(copy.deepcopy(model))
+            # model.node_in_fts = updated_dim
             updated_dim = node_in_w_head
 
         self.hops = nn.ModuleList(hops)
@@ -79,7 +86,7 @@ class GNBlock(nn.Module):
         node_fts_prior = None
 
         for layer in self.hops:
-            node_fts_curr = layer([node_fts, edge_fts, edges])
+            node_fts_curr = layer(node_fts, edges, edge_fts)
 
             if node_fts_prior is not None:
                 if self.residual_mode == "gated":

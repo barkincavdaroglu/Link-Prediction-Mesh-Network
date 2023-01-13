@@ -5,26 +5,27 @@ import torch.nn as nn
 
 @dataclass
 class GeneratorConfig:
-    batch_size: int = 4
-    sequence_length: int = 8
+    horizon: int = 3
+    batch_size: int = 64
+    sequence_length: int = 12
     # Dimension of input graph features
-    graph_in_fts: int = 9
+    graph_in_fts: int = 2
     # Dimension of output graph features
-    graph_out_fts: int = 64
+    graph_out_fts: int = 32
     # Dimension of input node features
-    node_in_fts: int = 6
+    node_in_fts: int = 2
     # Dimension of output node features
-    node_out_fts: int = 64
+    node_out_fts: int = 32
     # Dimension of input edge features
-    edge_in_fts: int = 2
+    edge_in_fts: int = 1
     # Dimension of output edge features
-    edge_out_fts: int = 32
+    edge_out_fts: int = 8
     # Number of attention heads for graph update layer
     num_heads_graph: int = 5
     # Number of nodes in the graph
-    node_num: int = 19
+    node_num: int = 207
     # Dimension of the hidden state of the GRU
-    gru_hidden: int = 128
+    gru_hidden: int = 207
     # Number of hops we want to aggregate information for
     nr_of_hops: int = 1
     # The mode with which to aggregate each node: "concat" or "sum"
