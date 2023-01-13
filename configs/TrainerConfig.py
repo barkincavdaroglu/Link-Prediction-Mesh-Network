@@ -14,7 +14,7 @@ class TrainerConfig:
     # Weight decay / L2 Regularization
     weight_decay: float = 0.0005
     # num_epochs: int = 20
-    pretrain_epochs: int = 30  # after 18 it overfits
+    pretrain_epochs: int = 5  # after 18 it overfits
     gan_epochs: int = 0
 
     def dict(self):

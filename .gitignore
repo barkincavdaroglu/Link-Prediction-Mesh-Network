@@ -8,3 +8,4 @@ model_ckpts1/
 lightning_logs/
 .pyre*
 playground.py
+data/
