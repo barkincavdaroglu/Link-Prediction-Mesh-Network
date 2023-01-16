@@ -20,6 +20,7 @@ class GraphLightningModule(pl.LightningModule):
         pretrain_epochs,
     ):
         super().__init__()
+        self.save_hyperparameters()
         self.generator = create_generator_model(gan_config.generator_config)
         self.discriminator = create_discriminator_model(gan_config.discriminator_config)
 
@@ -34,10 +35,7 @@ class GraphLightningModule(pl.LightningModule):
         self.is_clip_grads = is_clip_grads
         self.horizon = gan_config.generator_config.horizon
         self.pretrain_epochs = pretrain_epochs
-        """for p in self.generator.parameters():
-            p.register_hook(
-                lambda grad: torch.clamp(grad, -gradient_clip_val, gradient_clip_val)
-            )"""
+
         torch.nn.utils.clip_grad_norm_(self.generator.parameters(), gradient_clip_val)
 
     def forward(self, x):
@@ -61,20 +59,9 @@ class GraphLightningModule(pl.LightningModule):
     def pretrain_step(self, batch, batch_idx):
         """
         Pretrain generator
-        :param batch:
-        Tuple[
-            List[
-                edges: torch.Tensor with shape (2, batch_size * sequence_length * num_edges),
-                node_fts: torch.Tensor with shape (batch_size * sequence_length * num_nodes, node_in_fts),
-                edge_fts: torch.Tensor with shape (batch_size * sequence_length * num_edges, edge_in_fts)
-                graph_fts: torch.Tensor with shape (batch_size * sequence_length, graph_in_fts)
-            ],
-            torch.Tensor with shape (batch_size * num_nodes, num_nodes)
-        ]
-
+        :param batch
         :param batch_idx:
         """
-        # edges, node_fts, edge_fts, graph_fts, target_adj = batch
         node_fts, edges, edge_fts, target = (
             batch.x,
             batch.edge_index,
@@ -152,8 +139,6 @@ class GraphLightningModule(pl.LightningModule):
         return logger_dict
 
     def training_step(self, batch, batch_idx):
-        # torch.autograd.set_detect_anomaly(True)
-
         if self.counter < self.pretrain_epochs:
             logger_dict, log_mode = (
                 self.pretrain_step(batch, batch_idx),
