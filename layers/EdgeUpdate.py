@@ -29,15 +29,6 @@ class EdgeUpdate(torch.nn.Module):
         Returns:
             edge_fts: updated edge features
         """
-        inputs = (node_fts, edge_fts, edges)
-        node_fts, edge_fts, edges = inputs
-
-        node_fts, edge_fts, edges = (
-            node_fts.squeeze(),
-            edge_fts.squeeze(),
-            edges.squeeze(),
-        )
-
         edge_fts = self.initial_update(edge_fts)
         heads, tails = edges[0], edges[1]
 
