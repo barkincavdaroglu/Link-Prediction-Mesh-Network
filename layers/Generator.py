@@ -38,6 +38,7 @@ class Generator(nn.Module):
             config,
             gnn,
         )
+
         self.hidden_dim = config.gru_hidden
 
         # TODO: Add BatchNorm1d before passing to self.rnn
@@ -54,7 +55,7 @@ class Generator(nn.Module):
         self.sequence_length = config.sequence_length
         self.batch_size = config.batch_size
         self.horizon = config.horizon
-        self.output_activation = nn.Sigmoid()
+        self.output_activation = nn.Tanh()
 
         self.ffn = nn.Sequential(
             nn.Linear(
@@ -81,9 +82,7 @@ class Generator(nn.Module):
         node_fts_all = torch.tensor([])
 
         for timestep in range(self.sequence_length):
-            _, _, node_fts_t, edge_fts_t, edges_t = self.gnn(
-                node_fts[:, :, timestep], edge_fts, edges
-            )
+            _, _, node_fts_t, _, _ = self.gnn(node_fts[:, :, timestep], edge_fts, edges)
             node_fts_all = torch.cat((node_fts_all, node_fts_t.unsqueeze(0)), dim=0)
 
         node_fts_all = node_fts_all.view(

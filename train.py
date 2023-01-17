@@ -6,12 +6,24 @@ from configs.GANConfig import GANConfig
 from configs.TrainerConfig import TrainerConfig
 from LightningModule import GraphLightningModule
 from pytorch_lightning import Trainer
+import torch_geometric.transforms as T
+
 from pytorch_lightning.loggers import WandbLogger
 
 wandb_logger = WandbLogger(project="test-project")
 
 loader = METRLADatasetLoader()
+
+diff_transform = T.GDC(
+    self_loop_weight=1,
+    normalization_in="sym",
+    normalization_out="col",
+    diffusion_kwargs=dict(method="ppr", alpha=0.05),
+    sparsification_kwargs=dict(method="topk", k=128, dim=0),
+    exact=True,
+)
 dataset = loader.get_dataset()
+
 gen_config = GeneratorConfig()
 
 train_dataset, test_dataset = temporal_signal_split(dataset, train_ratio=0.8)
@@ -27,6 +39,10 @@ lightning_datamodel = LightningDataset(
 
 gan_config = GANConfig()
 trainer_config = TrainerConfig()
+PARAMS = {
+    "model_config": gan_config.dict(),
+    "trainer_config": trainer_config.dict(),
+}
 
 pl_model = GraphLightningModule(
     gan_config,
@@ -37,7 +53,7 @@ pl_model = GraphLightningModule(
     trainer_config.pretrain_epochs,
 )
 
-wandb_logger.watch(pl_model, log="all", log_freq=50)
+wandb_logger.watch(pl_model, log="all", log_freq=10)
 
 trainer = Trainer(
     logger=wandb_logger,

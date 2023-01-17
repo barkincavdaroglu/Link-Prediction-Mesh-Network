@@ -19,7 +19,7 @@ class GeneratorConfig:
     # Dimension of input edge features
     edge_in_fts: int = 1
     # Dimension of output edge features
-    edge_out_fts: int = 8
+    edge_out_fts: int = 4
     # Number of attention heads for graph update layer
     num_heads_graph: int = 5
     # Number of nodes in the graph
@@ -27,13 +27,13 @@ class GeneratorConfig:
     # Dimension of the hidden state of the GRU
     gru_hidden: int = 207
     # Number of hops we want to aggregate information for
-    nr_of_hops: int = 1
+    nr_of_hops: int = 2
     # The mode with which to aggregate each node: "concat" or "sum"
-    node_agg_mode: str = "concat"
+    node_agg_mode: str = "sum"
     # Negative slope of the LeakyReLU activation function.
     alpha: float = 0.2
     # If True, pass edges through a linear layer before node attention aggregation.
-    update_edge_first: bool = False
+    update_edge_first: bool = True
     # Mode for residual connections: "add", "concat", "gated"
     residual_mode: str = "add"
     #
@@ -42,9 +42,9 @@ class GeneratorConfig:
 
     ### Attention Config ###
     # Number of attention heads for node update layer
-    num_heads_node: int = 2
-    # The mode with which to aggregate the heads: "weighted_mean", "sum", "concat"
-    head_agg_mode: str = "weighted_mean"
+    num_heads_node: int = 4
+    # The mode with which to aggregate the heads: "var", "sum", "concat"
+    head_agg_mode: str = "var"
     # If True, learn the scale of the message passing norm
     messagenorm_learn_scale: bool = False
     attention_head_type: str = "v1"
