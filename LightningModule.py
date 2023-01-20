@@ -234,9 +234,18 @@ class GraphLightningModule(pl.LightningModule):
             self.log("val/loss", loss.mean())
 
     def test_step(self, batch, batch_idx):
-        sequence, target_adj = batch
-        predicted_adj = self(sequence)
-        loss = self.loss_module(predicted_adj, target_adj)
+        node_fts, edges, edge_fts, target = (
+            batch.x,
+            batch.edge_index,
+            batch.edge_attr,
+            batch.y[:, : self.horizon],
+        )
+
+        edge_fts = edge_fts.unsqueeze(dim=1)
+
+        adj_predicted = self.generator(edges, node_fts, edge_fts, target)
+        loss = self.pretrain_loss_module(adj_predicted, target)
+
         self.log("test_loss", loss)
 
     def configure_optimizers(self):
