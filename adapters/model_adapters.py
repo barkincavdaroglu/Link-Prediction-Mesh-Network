@@ -3,13 +3,11 @@ import torch.nn as nn
 
 from layers.Discriminator import Discriminator
 from layers.Generator import Generator
-from layers.MultiHeadNodeAttention import MultiHeadNodeAttention
 from layers.GraphConv import GraphConvolution
 from configs.GeneratorConfig import GeneratorConfig
 from configs.DiscriminatorConfig import DiscriminatorConfig
 from configs.GANConfig import GANConfig
-from layers.NodeAttention import NodeAttentionHead
-from layers.NodeAttentionv2 import NodeAttentionHeadv2
+from torch_geometric.nn import GATConv
 
 
 def model_adapter(model_string: str) -> nn.Module:
@@ -18,7 +16,7 @@ def model_adapter(model_string: str) -> nn.Module:
         model_string: Name of model to be used
     """
     if model_string == "attention_heads":
-        return MultiHeadNodeAttention
+        return GATConv
     elif model_string == "graph_conv":
         return GraphConvolution
     else:
@@ -32,14 +30,9 @@ def create_generator_model(config: GeneratorConfig) -> nn.Module:
     """
     model_string = config.model
     if model_string == "attention_heads":
-        attention_head_type = config.attention_head_type
-        if attention_head_type == "v1":
-            attention_head = NodeAttentionHead
-        elif attention_head_type == "v2":
-            attention_head = NodeAttentionHeadv2
-        else:
-            raise ValueError("Attention head type not found")
-        sub_model = MultiHeadNodeAttention(config, attention_head)
+        sub_model = GATConv(
+            config.node_in_fts, config.node_out_fts, config.num_heads_node
+        )
     elif model_string == "graph_conv":
         sub_model = GraphConvolution(config)
     else:

@@ -8,6 +8,7 @@ from configs.GeneratorConfig import GeneratorConfig
 class Generator(nn.Module):
     def __init__(self, config: GeneratorConfig, gnn: nn.Module):
         super(Generator, self).__init__()
+        self.node_in_fts = config.node_in_fts
         node_in_w_head = config.node_out_fts
 
         if config.model == "attention_heads":
@@ -37,6 +38,7 @@ class Generator(nn.Module):
             config,
             gnn,
         )
+
         self.hidden_dim = config.gru_hidden
 
         # TODO: Add BatchNorm1d before passing to self.rnn
@@ -46,12 +48,14 @@ class Generator(nn.Module):
 
         self.rnn = nn.GRU(
             config.node_num * node_in_w_head,
-            config.gru_hidden,
+            config.gru_hidden * config.horizon,
             batch_first=True,
         )
 
         self.sequence_length = config.sequence_length
         self.batch_size = config.batch_size
+        self.horizon = config.horizon
+        self.output_activation = nn.Tanh()
 
         self.ffn = nn.Sequential(
             nn.Linear(
@@ -70,23 +74,23 @@ class Generator(nn.Module):
     ):
         """
         :param edges: LongTensor (2, batch_size * sequence_length * edge_num)
-        :param node_fts: FloatTensor (batch_size * sequence_length * node_num, node_in_fts)
-        :param edge_fts: FloatTensor (batch_size * sequence_length * edge_num, edge_in_fts)
+        :param node_fts: FloatTensor (batch_size * node_num, node_in_fts, time_steps)
+        :param edge_fts: FloatTensor (edge_num,)
         :param graph_fts: FloatTensor (batch_size * sequence_length, graph_in_fts)
         :return output: FloatTensor (batch_size, node_num * node_num)
         """
-        _, _, all_node_fts, edge_fts, edges = self.gnn(node_fts, edge_fts, edges)
+        node_fts_all = torch.tensor([])
 
-        all_node_fts = all_node_fts.view(
+        for timestep in range(self.sequence_length):
+            _, _, node_fts_t, _, _ = self.gnn(node_fts[:, :, timestep], edge_fts, edges)
+            node_fts_all = torch.cat((node_fts_all, node_fts_t.unsqueeze(0)), dim=0)
+
+        node_fts_all = node_fts_all.view(
             -1, self.sequence_length, self.node_num * self.out_features
         )
-        h0 = torch.zeros(1, self.batch_size, self.hidden_dim).requires_grad_()
 
-        _, hn = self.rnn(all_node_fts, h0.detach())
+        _, hn = self.rnn(node_fts_all)
         hn = hn.squeeze()
 
-        # TODO: Investigate whether this would explode gradients
-        # hn = self.leaky_relu(hn)
-
-        output = self.ffn(hn)
+        output = self.output_activation(hn)  # self.ffn(hn)
         return output
