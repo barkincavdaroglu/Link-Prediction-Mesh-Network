@@ -26,12 +26,14 @@ class GraphLightningModule(pl.LightningModule):
         self.pretrain_loss_module = create_gen_loss_module(gan_config.generator_config)
         self.gan_loss_module = create_disc_loss_module(gan_config.discriminator_config)
 
+        self.batch_size = 1
         self.automatic_optimization = False
         self.lr = lr
         self.gradient_clip_val = gradient_clip_val
         self.gradient_clip_algorithm = gradient_clip_algorithm
         self.counter = 0
         self.is_clip_grads = is_clip_grads
+        self.horizon = gan_config.generator_config.horizon
         self.pretrain_epochs = pretrain_epochs
         """for p in self.generator.parameters():
             p.register_hook(
@@ -73,15 +75,29 @@ class GraphLightningModule(pl.LightningModule):
 
         :param batch_idx:
         """
-        edges, node_fts, edge_fts, graph_fts, target_adj = batch
+        # edges, node_fts, edge_fts, graph_fts, target_adj = batch
+        node_fts, edges, edge_fts, target = (
+            batch.x,
+            batch.edge_index,
+            batch.edge_attr,
+            batch.y[:, : self.horizon],
+        )
+
+        edge_fts = edge_fts.unsqueeze(dim=1)
+
+        # * node_fts has shape (num_nodes, num_node_fts, time_steps)
+        # * edges has shape (2, num_edges) where num_edges is the
+        # total number of edges in the batch
+        # * edge_fts has shape (num_edges,)
+        # * target has shape (num_nodes, time_steps)
 
         _, _, pretrain_gen_opt = self.optimizers()
         logger_dict = {}
 
         pretrain_gen_opt.zero_grad()
-        adj_predicted = self.generator(edges, node_fts, edge_fts, graph_fts)
+        adj_predicted = self.generator(edges, node_fts, edge_fts, None)
 
-        loss = self.pretrain_loss_module(adj_predicted, target_adj)  #
+        loss = self.pretrain_loss_module(adj_predicted, target)  #
 
         self.manual_backward(loss)
         self.clip_grads("generator")
@@ -153,6 +169,7 @@ class GraphLightningModule(pl.LightningModule):
             on_step=True,
             on_epoch=True,
             prog_bar=True,
+            batch_size=self.batch_size,
             logger=True,
         )
 
@@ -189,21 +206,29 @@ class GraphLightningModule(pl.LightningModule):
         self.counter += 1
 
     def validation_step(self, batch, batch_idx):
-        edges, node_fts, edge_fts, graph_fts, target_adj = batch
+        node_fts, edges, edge_fts, target = (
+            batch.x,
+            batch.edge_index,
+            batch.edge_attr,
+            batch.y[:, : self.horizon],
+        )
+
+        edge_fts = edge_fts.unsqueeze(dim=1)
 
         if self.counter < self.pretrain_epochs:
-            adj_predicted = self.generator(edges, node_fts, edge_fts, graph_fts)
-            loss = self.pretrain_loss_module(adj_predicted, target_adj)
+            adj_predicted = self.generator(edges, node_fts, edge_fts, target)
+            loss = self.pretrain_loss_module(adj_predicted, target)
             return {"loss": loss.detach().numpy()}
         else:
-            adj_predicted = self.generator(edges, node_fts, edge_fts, graph_fts)
-            loss = self.loss_module(adj_predicted, target_adj)
+            adj_predicted = self.generator(edges, node_fts, edge_fts, target)
+            loss = self.loss_module(adj_predicted, target)
             self.log(
                 "val/step/mse_loss",
                 loss,
                 on_step=False,
                 on_epoch=True,
                 prog_bar=True,
+                batch_size=self.batch_size,
                 logger=True,
             )
             return {
